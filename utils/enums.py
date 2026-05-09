@@ -17,6 +17,23 @@ class TokenType(Enum):
 
     K_FUNCTION = "function"
     K_RETURN = "return"
+    K_TRUE = "true"
+    K_FALSE = "false"
+    K_AND = "and"
+    K_OR = "or"
+    K_NOT = "not"
+
+    PLUS = "PLUS"
+    MINUS = "MINUS"
+    STAR = "STAR"
+    SLASH = "SLASH"
+    EQUAL_EQUAL = "EQ"
+    BANG = "BANG"
+    LESSER = "LESSER"
+    LESSER_EQUALS = "LESSER_EQUALS"
+    GREATER = "GREATER"
+    GREATER_EQUALS = "GREATER_EQUALS"
+
     K_EOF = "eof"
 
 
@@ -24,3 +41,26 @@ class StatementType(Enum):
     FUNCTION_DEFINITION = auto()
     BLOCK_STATEMENT = auto()
     RETURN_STATEMENT = auto()
+    EXPRESSION_STATEMENT = auto()
+    IDENTIFIER = auto()
+    INTEGER = auto()
+    FLOAT = auto()
+    STRING = auto()
+    BOOLEAN = auto()
+
+    UNARY_PLUS = auto()
+    UNARY_MINUS = auto()
+    UNARY_BANG = auto()
+
+    BINARY_PIPE_PIPE = auto()
+    BINARY_AMP_AMP = auto()
+    BINARY_EQUAL_EQUAL = auto()
+    BINARY_BANG_EQUAL = auto()
+    BINARY_LESSER = auto()
+    BINARY_LESSER_EQUALS = auto()
+    BINARY_GREATER = auto()
+    BINARY_GREATER_EQUALS = auto()
+    BINARY_ADD = auto()
+    BINARY_SUB = auto()
+    BINARY_MUL = auto()
+    BINARY_DIV = auto()

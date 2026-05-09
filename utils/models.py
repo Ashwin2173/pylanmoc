@@ -32,9 +32,49 @@ class Statement:
 
     def get_line(self) -> int:
         return self.s_line
+    
+class ExpressionStatement(Statement):
+    def __init__(self, s_type: StatementType, line: int) -> None:
+        super().__init__(s_type, line)
+
+class Integer(ExpressionStatement):
+    def __init__(self, token: Word, line: int):
+        super().__init__(StatementType.INTEGER, line)
+        self.token = token
+
+class FloatLiteral(ExpressionStatement):
+    def __init__(self, token: Word, line: int):
+        super().__init__(StatementType.FLOAT, line)
+        self.token = token
+
+class StringLiteral(ExpressionStatement):
+    def __init__(self, token: Word, line: int):
+        super().__init__(StatementType.STRING, line)
+        self.token = token
+
+class BooleanLiteral(ExpressionStatement):
+    def __init__(self, token: Word, line: int):
+        super().__init__(StatementType.BOOLEAN, line)
+        self.token = token
+
+class Identifier(ExpressionStatement):
+    def __init__(self, token: Word, line: int):
+        super().__init__(StatementType.IDENTIFIER, line)
+        self.token = token
+
+class UnaryExpression(ExpressionStatement):
+    def __init__(self, value: ExpressionStatement, s_type: StatementType, line: int) -> None:
+        super().__init__(s_type, line)
+        self.value = value
+
+class BinaryExpression(ExpressionStatement):
+    def __init__(self, left: ExpressionStatement, right: ExpressionStatement, s_type: StatementType, line: int) -> None:
+        super().__init__(s_type, line)
+        self.left = left
+        self.right = right
 
 class ReturnStatement(Statement):
-    def __init__(self, expression: Statement, line: int) -> None:
+    def __init__(self, expression: ExpressionStatement | None, line: int) -> None:
         super().__init__(StatementType.RETURN_STATEMENT, line)
         self.expression = expression
 

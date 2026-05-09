@@ -37,8 +37,6 @@ def main(args: list[str]) -> None:
         sys.exit(1)
     compiler = Compiler(program_file)
     compiler.compile()
-    for i in compiler.tokens:
-        print(i)
     exit(0)
 
 if __name__ == "__main__":
