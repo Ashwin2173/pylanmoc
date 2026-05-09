@@ -1,5 +1,7 @@
 import sys
-from constants import FILE_EXTENSION, MINOR_VERSION, MAJOR_VERSION
+
+from utils.compiler import Compiler
+from utils.constants import FILE_EXTENSION, MINOR_VERSION, MAJOR_VERSION
 
 def print_help() -> None:
     print("USAGE:")
@@ -30,11 +32,14 @@ def main(args: list[str]) -> None:
             if item.endswith(FILE_EXTENSION):
                 program_file = open_program_file(item)
                 break
-    if program_file is not None:
-        print(program_file)
-        exit(0)
-    print_help()
-    sys.exit(1)
+    if program_file is None:
+        print_help()
+        sys.exit(1)
+    compiler = Compiler(program_file)
+    compiler.compile()
+    for i in compiler.tokens:
+        print(i)
+    exit(0)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
