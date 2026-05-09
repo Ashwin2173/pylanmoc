@@ -17,6 +17,8 @@ TOKEN_GRAMMAR = r"""
 | (?P<K_AND>\band\b)                                      # logical and
 | (?P<K_OR>\bor\b)                                        # logical or
 | (?P<K_NOT>\bnot\b)                                      # logical not
+| (?P<K_IF>\bif\b)                                        # if keyword 
+| (?P<K_ELSE>\belse\b)                                    # else keyword 
 | (?P<EQUAL_EQUAL>==)                                     # equal
 | (?P<ASSIGN>=)                                           # assignment (after ==)
 | (?P<BANG>!=)                                            # not equal (bang)

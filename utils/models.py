@@ -95,6 +95,13 @@ class BlockStatement(Statement):
         super().__init__(StatementType.BLOCK_STATEMENT, line)
         self.body = body
 
+class IfStatement(Statement):
+    def __init__(self, test: ExpressionStatement, consequent: Statement, alternate: Statement, line: int) -> None:
+        super().__init__(StatementType.IF_STATEMENT, line)
+        self.test = test
+        self.consequent = consequent
+        self.alternate = alternate
+
 class FunctionStatement(Statement):
     def __init__(self, name: str, body: BlockStatement, line: int) -> None:
         super().__init__(StatementType.FUNCTION_DEFINITION, line)

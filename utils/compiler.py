@@ -1,22 +1,23 @@
 import re
 
 from utils.models import (
-    AssignmentStatement,
-    BinaryExpression,
-    BlockStatement,
-    BooleanLiteral,
-    ExpressionStatement,
-    FloatLiteral,
-    FunctionStatement,
-    Identifier,
+    Word,
     Integer,
     Program,
-    ReturnStatement,
     Statement,
+    Identifier,
+    IfStatement,
+    FloatLiteral,
     StringLiteral,
+    BlockStatement,
+    BooleanLiteral,
+    ReturnStatement,
     UnaryExpression,
+    BinaryExpression,
+    FunctionStatement,
+    ExpressionStatement,
+    AssignmentStatement,
     VariableDeclaration,
-    Word,
 )
 from utils.constants import TOKEN_GRAMMAR
 from utils.enums import StatementType, TokenType
@@ -80,7 +81,17 @@ class Compiler:
             return self.__scan_return_statement(token)
         if token.get_type() == TokenType.K_VAR:
             return self.__scan_var_statement(token)
-        return self.__scan_raw_expression()
+        if token.get_type() == TokenType.K_IF:
+            return self.__scan_if_statement(token)
+        if token.get_type() == TokenType.OPEN_BRACE:
+            self.__pos -= 1
+            return self.__scan_block_statement()
+        return self.__scan_expression_statement()
+
+    def __scan_expression_statement(self) -> ExpressionStatement:
+        expression = self.__scan_raw_expression()
+        expect_token(self.__next(), TokenType.SEMI_COLON)
+        return expression
 
     def __scan_return_statement(self, token: Word) -> ReturnStatement:
         next_token = self.__next_required("Expected ';' or expression after 'return'")
@@ -96,7 +107,22 @@ class Compiler:
             line=token.get_line()
         )
 
-    def __scan_var_statement(self, let_token: Word) -> VariableDeclaration:
+    def __scan_if_statement(self, token: Word) -> IfStatement:
+        self.__next_required("Expected expression after 'if'")
+        test_expression = self.__scan_raw_expression()
+        consequent = self.__scan_local_statement(self.__next())
+        alternate = None
+        if self.__peek().get_type() == TokenType.K_ELSE:
+            self.__next_required("Expected statement after 'else'")
+            alternate = self.__scan_local_statement(self.__next())
+        return IfStatement(
+            test=test_expression,
+            consequent=consequent,
+            alternate=alternate,
+            line=token.get_line()
+        )
+
+    def __scan_var_statement(self, var_token: Word) -> VariableDeclaration:
         name_token = self.__next_required("Expected variable name after 'var'")
         expect_token(name_token, TokenType.IDENTIFIER)
         assign_token = self.__next_required("Expected '=' after variable name")
@@ -106,14 +132,13 @@ class Compiler:
         return VariableDeclaration(
             name=name_token.get_raw(),
             initializer=initializer,
-            line=let_token.get_line()
+            line=var_token.get_line()
         )
 
     def __scan_assignment_statement(self, name_token: Word) -> AssignmentStatement:
         assign_token = self.__next_required("Expected '=' in assignment")
         expect_token(assign_token, TokenType.ASSIGN)
         value = self.__scan_logical_or()
-        expect_token(self.__next_required("Expected ';' after assignment"), TokenType.SEMI_COLON)
         return AssignmentStatement(
             name=name_token.get_raw(),
             value=value,

@@ -23,6 +23,8 @@ class TokenType(Enum):
     K_AND = "and"
     K_OR = "or"
     K_NOT = "not"
+    K_IF = "if"
+    K_ELSE = "else"
 
     PLUS = "PLUS"
     MINUS = "MINUS"
@@ -69,3 +71,4 @@ class StatementType(Enum):
 
     VARIABLE_DECLARATION = auto()
     ASSIGNMENT_STATEMENT = auto()
+    IF_STATEMENT = auto()
