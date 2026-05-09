@@ -11,6 +11,7 @@ from utils.models import (
     StringLiteral,
     BlockStatement,
     BooleanLiteral,
+    CallExpression,
     ReturnStatement,
     UnaryExpression,
     BinaryExpression,
@@ -145,6 +146,22 @@ class Compiler:
             line=name_token.get_line()
         )
 
+    def __scan_call_expression(self, token: Word) -> CallExpression:
+        self.__next_required("Expected '(' in function call")
+        arguments = list()
+        while True:
+            next_token = self.__next_required("Expected ')' or ',' in function args")
+            if next_token.get_type() == TokenType.CLOSE_PARAM:
+                break
+            arguments.append(self.__scan_raw_expression())
+            if self.__peek().get_type() == TokenType.COMMA:
+                self.__next()
+        return CallExpression(
+            callee=token,
+            arguments=arguments,
+            line=token.get_line()
+        )
+
     def __scan_raw_expression(self) -> ExpressionStatement:
         self.__pos -= 1
         return self.__scan_logical_or()
@@ -154,7 +171,7 @@ class Compiler:
         while self.__match(TokenType.K_OR):
             token = self.__next()
             right = self.__scan_logical_and()
-            left = BinaryExpression(left, right, StatementType.BINARY_PIPE_PIPE, token.get_line())
+            left = BinaryExpression(left, right, StatementType.BINARY_OR, token.get_line())
         return left
 
     def __scan_logical_and(self) -> ExpressionStatement:
@@ -162,7 +179,7 @@ class Compiler:
         while self.__match(TokenType.K_AND):
             token = self.__next()
             right = self.__scan_equality()
-            left = BinaryExpression(left, right, StatementType.BINARY_AMP_AMP, token.get_line())
+            left = BinaryExpression(left, right, StatementType.BINARY_AND, token.get_line())
         return left
 
     def __scan_equality(self) -> ExpressionStatement:
@@ -245,12 +262,15 @@ class Compiler:
             inner = self.__scan_logical_or()
             expect_token(self.__next(), TokenType.CLOSE_PARAM)
             return inner
+        print(f"[ LOG ] {token}")
         raise LanmoSyntaxError(token, "Invalid Syntax")
 
     def __scan_identifier(self, token: Word, line: int) -> ExpressionStatement:
         next_token = self.__peek()
         if next_token.get_type() == TokenType.ASSIGN:
             return self.__scan_assignment_statement(token)
+        elif next_token.get_type() == TokenType.OPEN_PARAM:
+            return self.__scan_call_expression(token)
         expect_token(token, TokenType.IDENTIFIER)
         return Identifier(token, line)
 

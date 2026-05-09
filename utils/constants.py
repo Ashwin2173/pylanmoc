@@ -21,6 +21,7 @@ TOKEN_GRAMMAR = r"""
 | (?P<K_ELSE>\belse\b)                                    # else keyword 
 | (?P<EQUAL_EQUAL>==)                                     # equal
 | (?P<ASSIGN>=)                                           # assignment (after ==)
+| (?P<COMMA>,)                                            # comma 
 | (?P<BANG>!=)                                            # not equal (bang)
 | (?P<LESSER_EQUALS><=)                                   # lesser or equal
 | (?P<GREATER_EQUALS>>=)                                  # greater or equal

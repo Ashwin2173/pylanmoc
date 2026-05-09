@@ -37,6 +37,12 @@ class ExpressionStatement(Statement):
     def __init__(self, s_type: StatementType, line: int) -> None:
         super().__init__(s_type, line)
 
+class CallExpression(ExpressionStatement):
+    def __init__(self, callee: Word, arguments: list[ExpressionStatement], line: int):
+        super().__init__(StatementType.CALL_EXPRESSION, line)
+        self.callee = callee
+        self.arguments = arguments
+
 class Integer(ExpressionStatement):
     def __init__(self, token: Word, line: int):
         super().__init__(StatementType.INTEGER, line)

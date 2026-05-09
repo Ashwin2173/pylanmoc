@@ -1,4 +1,8 @@
 function main() {
-    if x = 10 return 0; else return 1;
+    print("Hello, World", sum() + 1);
     return 0;
+}
+
+function sum() {
+    return 1 + 2;
 }
