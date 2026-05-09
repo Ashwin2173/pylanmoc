@@ -17,6 +17,7 @@ class TokenType(Enum):
 
     K_FUNCTION = "function"
     K_RETURN = "return"
+    K_VAR = "var"
     K_TRUE = "true"
     K_FALSE = "false"
     K_AND = "and"
@@ -28,6 +29,7 @@ class TokenType(Enum):
     STAR = "STAR"
     SLASH = "SLASH"
     EQUAL_EQUAL = "EQ"
+    ASSIGN = "ASSIGN"
     BANG = "BANG"
     LESSER = "LESSER"
     LESSER_EQUALS = "LESSER_EQUALS"
@@ -64,3 +66,6 @@ class StatementType(Enum):
     BINARY_SUB = auto()
     BINARY_MUL = auto()
     BINARY_DIV = auto()
+
+    VARIABLE_DECLARATION = auto()
+    ASSIGNMENT_STATEMENT = auto()

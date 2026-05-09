@@ -1,6 +1,7 @@
 import re
 
 from utils.models import (
+    AssignmentStatement,
     BinaryExpression,
     BlockStatement,
     BooleanLiteral,
@@ -14,6 +15,7 @@ from utils.models import (
     Statement,
     StringLiteral,
     UnaryExpression,
+    VariableDeclaration,
     Word,
 )
 from utils.constants import TOKEN_GRAMMAR
@@ -24,9 +26,9 @@ from utils.exceptions import LanmoSyntaxError
 class Compiler:
     def __init__(self, source: str) -> None:
         self.source = source
-        self._tokens: list[Word] = self.__tokenize()
+        self.__tokens: list[Word] = self.__tokenize()
         self.__pos: int = 0
-        self.tokens = self._tokens
+        self.tokens = self.__tokens
 
     def compile(self) -> None:
         program = self.__scan_program()
@@ -76,56 +78,82 @@ class Compiler:
     def __scan_local_statement(self, token: Word) -> Statement:
         if token.get_type() == TokenType.K_RETURN:
             return self.__scan_return_statement(token)
-        raise LanmoSyntaxError(token, "Invalid Syntax")
+        if token.get_type() == TokenType.K_VAR:
+            return self.__scan_var_statement(token)
+        return self.__scan_raw_expression()
 
     def __scan_return_statement(self, token: Word) -> ReturnStatement:
-        next_token = self.__next_required("Expected ';' at end of statement")
+        next_token = self.__next_required("Expected ';' or expression after 'return'")
         if next_token.get_type() == TokenType.SEMI_COLON:
             return ReturnStatement(
                 expression=None,
                 line=token.get_line()
             )
-        expression = self.__scan_expression()
+        expression = self.__scan_raw_expression()
         expect_token(self.__next_required("Expected ';' after return expression"), TokenType.SEMI_COLON)
         return ReturnStatement(
             expression=expression,
             line=token.get_line()
         )
 
-    def __scan_expression(self) -> ExpressionStatement:
-        self.__pos -= 1
-        return self.__parse_logical_or()
+    def __scan_var_statement(self, let_token: Word) -> VariableDeclaration:
+        name_token = self.__next_required("Expected variable name after 'var'")
+        expect_token(name_token, TokenType.IDENTIFIER)
+        assign_token = self.__next_required("Expected '=' after variable name")
+        expect_token(assign_token, TokenType.ASSIGN)
+        initializer = self.__scan_logical_or()
+        expect_token(self.__next_required("Expected ';' after variable declaration"), TokenType.SEMI_COLON)
+        return VariableDeclaration(
+            name=name_token.get_raw(),
+            initializer=initializer,
+            line=let_token.get_line()
+        )
 
-    def __parse_logical_or(self) -> ExpressionStatement:
-        left = self.__parse_logical_and()
+    def __scan_assignment_statement(self, name_token: Word) -> AssignmentStatement:
+        assign_token = self.__next_required("Expected '=' in assignment")
+        expect_token(assign_token, TokenType.ASSIGN)
+        value = self.__scan_logical_or()
+        expect_token(self.__next_required("Expected ';' after assignment"), TokenType.SEMI_COLON)
+        return AssignmentStatement(
+            name=name_token.get_raw(),
+            value=value,
+            line=name_token.get_line()
+        )
+
+    def __scan_raw_expression(self) -> ExpressionStatement:
+        self.__pos -= 1
+        return self.__scan_logical_or()
+
+    def __scan_logical_or(self) -> ExpressionStatement:
+        left = self.__scan_logical_and()
         while self.__match(TokenType.K_OR):
             token = self.__next()
-            right = self.__parse_logical_and()
+            right = self.__scan_logical_and()
             left = BinaryExpression(left, right, StatementType.BINARY_PIPE_PIPE, token.get_line())
         return left
 
-    def __parse_logical_and(self) -> ExpressionStatement:
-        left = self.__parse_equality()
+    def __scan_logical_and(self) -> ExpressionStatement:
+        left = self.__scan_equality()
         while self.__match(TokenType.K_AND):
             token = self.__next()
-            right = self.__parse_equality()
+            right = self.__scan_equality()
             left = BinaryExpression(left, right, StatementType.BINARY_AMP_AMP, token.get_line())
         return left
 
-    def __parse_equality(self) -> ExpressionStatement:
-        left = self.__parse_comparison()
+    def __scan_equality(self) -> ExpressionStatement:
+        left = self.__scan_comparison()
         while self.__match(TokenType.EQUAL_EQUAL, TokenType.BANG):
             token = self.__next()
             stmt_type = {
                 TokenType.EQUAL_EQUAL: StatementType.BINARY_EQUAL_EQUAL,
                 TokenType.BANG:        StatementType.BINARY_BANG_EQUAL
             }[token.get_type()]
-            right = self.__parse_comparison()
+            right = self.__scan_comparison()
             left = BinaryExpression(left, right, stmt_type, token.get_line())
         return left
 
-    def __parse_comparison(self) -> ExpressionStatement:
-        left = self.__parse_term()
+    def __scan_comparison(self) -> ExpressionStatement:
+        left = self.__scan_term()
         while self.__match(TokenType.LESSER, TokenType.LESSER_EQUALS,
             TokenType.GREATER, TokenType.GREATER_EQUALS):
             token = self.__next()
@@ -135,46 +163,46 @@ class Compiler:
                 TokenType.GREATER:        StatementType.BINARY_GREATER,
                 TokenType.GREATER_EQUALS: StatementType.BINARY_GREATER_EQUALS
             }[token.get_type()]
-            right = self.__parse_term()
+            right = self.__scan_term()
             left = BinaryExpression(left, right, stmt_type, token.get_line())
         return left
 
-    def __parse_term(self) -> ExpressionStatement:
-        left = self.__parse_factor()
+    def __scan_term(self) -> ExpressionStatement:
+        left = self.__scan_factor()
         while self.__match(TokenType.PLUS, TokenType.MINUS):
             token = self.__next()
             stmt_type = {
                 TokenType.PLUS:  StatementType.BINARY_ADD,
                 TokenType.MINUS: StatementType.BINARY_SUB
             }[token.get_type()]
-            right = self.__parse_factor()
+            right = self.__scan_factor()
             left = BinaryExpression(left, right, stmt_type, token.get_line())
         return left
 
-    def __parse_factor(self) -> ExpressionStatement:
-        left = self.__parse_unary()
+    def __scan_factor(self) -> ExpressionStatement:
+        left = self.__scan_unary()
         while self.__match(TokenType.STAR, TokenType.SLASH):
             token = self.__next()
             stmt_type = {
                 TokenType.STAR:  StatementType.BINARY_MUL,
                 TokenType.SLASH: StatementType.BINARY_DIV
             }[token.get_type()]
-            right = self.__parse_unary()
+            right = self.__scan_unary()
             left = BinaryExpression(left, right, stmt_type, token.get_line())
         return left
 
-    def __parse_unary(self) -> ExpressionStatement:
+    def __scan_unary(self) -> ExpressionStatement:
         if self.__match(TokenType.K_NOT, TokenType.MINUS, TokenType.PLUS):
             token = self.__next()
-            right = self.__parse_unary()
+            right = self.__scan_unary()
             if token.get_type() == TokenType.K_NOT:
                 return UnaryExpression(right, StatementType.UNARY_BANG, token.get_line())
             if token.get_type() == TokenType.MINUS:
                 return UnaryExpression(right, StatementType.UNARY_MINUS, token.get_line())
             return UnaryExpression(right, StatementType.UNARY_PLUS, token.get_line())
-        return self.__parse_primary()
+        return self.__scan_primary()
 
-    def __parse_primary(self) -> ExpressionStatement:
+    def __scan_primary(self) -> ExpressionStatement:
         token = self.__next()
         line = token.get_line()
         token_type = token.get_type()
@@ -187,20 +215,27 @@ class Compiler:
         if token_type == TokenType.K_TRUE or token_type == TokenType.K_FALSE:
             return BooleanLiteral(token, line)
         if token_type == TokenType.IDENTIFIER:
-            return Identifier(token, line)
+            return self.__scan_identifier(token, line)
         if token_type == TokenType.OPEN_PARAM:
-            inner = self.__parse_logical_or()
+            inner = self.__scan_logical_or()
             expect_token(self.__next(), TokenType.CLOSE_PARAM)
             return inner
         raise LanmoSyntaxError(token, "Invalid Syntax")
 
+    def __scan_identifier(self, token: Word, line: int) -> ExpressionStatement:
+        next_token = self.__peek()
+        if next_token.get_type() == TokenType.ASSIGN:
+            return self.__scan_assignment_statement(token)
+        expect_token(token, TokenType.IDENTIFIER)
+        return Identifier(token, line)
+
     def __match(self, *types: TokenType) -> bool:
         return self.__peek().get_type() in types
 
-    def __peek(self) -> Word:
-        if self.__pos >= len(self._tokens):
+    def __peek(self, offset: int=0) -> Word:
+        if self.__pos >= len(self.__tokens) + offset:
             raise LanmoSyntaxError(None, "Invalid source file")
-        return self._tokens[self.__pos]
+        return self.__tokens[self.__pos + offset]
 
     def __next(self) -> Word:
         token = self.__peek()
@@ -225,7 +260,7 @@ class Compiler:
         return tokens
 
     def __next_required(self, message: str) -> Word:
-        if self.__pos >= len(self._tokens):
+        if self.__pos >= len(self.__tokens):
             raise LanmoSyntaxError(None, message)
         return self.__next()
 

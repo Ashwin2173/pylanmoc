@@ -78,6 +78,18 @@ class ReturnStatement(Statement):
         super().__init__(StatementType.RETURN_STATEMENT, line)
         self.expression = expression
 
+class VariableDeclaration(Statement):
+    def __init__(self, name: str, initializer: ExpressionStatement, line: int) -> None:
+        super().__init__(StatementType.VARIABLE_DECLARATION, line)
+        self.name = name
+        self.initializer = initializer
+
+class AssignmentStatement(ExpressionStatement):
+    def __init__(self, name: str, value: ExpressionStatement, line: int) -> None:
+        super().__init__(StatementType.ASSIGNMENT_STATEMENT, line)
+        self.name = name
+        self.value = value
+
 class BlockStatement(Statement):
     def __init__(self, body: list[Statement], line: int) -> None:
         super().__init__(StatementType.BLOCK_STATEMENT, line)

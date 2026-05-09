@@ -6,6 +6,7 @@ TOKEN_GRAMMAR = r"""
 (?P<COMMENT>//[^\n]*)                                     # single-line comment
 | (?P<K_FUNCTION>\bfunction\b)                            # function keyword
 | (?P<K_RETURN>\breturn\b)                                # return keyword
+| (?P<K_VAR>\bvar\b)                                      # variable declaration
 | (?P<OPEN_BRACE>\{)                                      # open brace operator
 | (?P<CLOSE_BRACE>\})                                     # close brace operator
 | (?P<OPEN_PARAM>\()                                      # open param operator
@@ -17,6 +18,7 @@ TOKEN_GRAMMAR = r"""
 | (?P<K_OR>\bor\b)                                        # logical or
 | (?P<K_NOT>\bnot\b)                                      # logical not
 | (?P<EQUAL_EQUAL>==)                                     # equal
+| (?P<ASSIGN>=)                                           # assignment (after ==)
 | (?P<BANG>!=)                                            # not equal (bang)
 | (?P<LESSER_EQUALS><=)                                   # lesser or equal
 | (?P<GREATER_EQUALS>>=)                                  # greater or equal
