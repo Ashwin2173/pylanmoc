@@ -1,5 +1,5 @@
 function main() {
-    hello();
+    print(hello());
     return 0;
 }
 

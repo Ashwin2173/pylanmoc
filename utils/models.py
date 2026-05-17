@@ -23,8 +23,8 @@ class Word:
         return f"{self.w_type} '{self.w_raw}' at line: {self.w_line}"
 
 class ByteBlob:
-    def __init__(self, opcode_array: bytearray | bytes=bytearray(), opcode_count: int = 0):
-        self.opcode_array = opcode_array
+    def __init__(self, opcode_array: bytearray | bytes=None, opcode_count: int = 0):
+        self.opcode_array = bytearray() if opcode_array is None else opcode_array
         self.opcode_count = opcode_count
 
     def add(self, blob: 'ByteBlob') -> None:
