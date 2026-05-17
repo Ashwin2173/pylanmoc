@@ -74,3 +74,31 @@ class StatementType(Enum):
     VARIABLE_DECLARATION = auto()
     ASSIGNMENT_STATEMENT = auto()
     IF_STATEMENT = auto()
+
+
+class DataType(Enum):
+    INTEGER    = auto()
+    STRING     = auto()
+    VARIABLE   = auto()
+    FUNCTION   = auto()
+    NONE       = auto()
+    BOOLEAN    = auto()
+
+
+class OpCodeType(Enum):
+    PUSH          = auto()
+    POP           = auto()
+    BIN_OP        = auto()
+    WRITE         = auto()
+    CALL          = auto()
+    HALT          = auto()
+    RETURN        = auto()
+    JUMP          = auto()
+    JUMP_IF_FALSE = auto()
+    DUP           = auto()
+    STORE         = auto()
+    LOAD          = auto()
+    MAKE_LIST     = auto()
+    GET_INDEX     = auto()
+    SET_INDEX     = auto()
+    UNARY_OP      = auto()

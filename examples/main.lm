@@ -1,8 +1,9 @@
 function main() {
-    print("Hello, World", sum() + 1);
+    hello();
     return 0;
 }
 
-function sum() {
-    return 1 + 2;
+function hello() {
+    print("Hello, World");
+    return "hello";
 }

@@ -22,6 +22,19 @@ class Word:
     def __str__(self):
         return f"{self.w_type} '{self.w_raw}' at line: {self.w_line}"
 
+class ByteBlob:
+    def __init__(self, opcode_array: bytearray | bytes=bytearray(), opcode_count: int = 0):
+        self.opcode_array = opcode_array
+        self.opcode_count = opcode_count
+
+    def add(self, blob: 'ByteBlob') -> None:
+        self.opcode_array += blob.opcode_array
+        self.opcode_count += blob.opcode_count
+
+    def add_raw(self, byte_data: bytearray | bytes) -> None:
+        self.opcode_array += byte_data
+        self.opcode_count += 1
+
 class Statement:
     def __init__(self, s_type: StatementType, s_line: int) -> None:
         self.s_type = s_type
@@ -43,7 +56,7 @@ class CallExpression(ExpressionStatement):
         self.callee = callee
         self.arguments = arguments
 
-class Integer(ExpressionStatement):
+class IntegerLiteral(ExpressionStatement):
     def __init__(self, token: Word, line: int):
         super().__init__(StatementType.INTEGER, line)
         self.token = token
@@ -109,7 +122,7 @@ class IfStatement(Statement):
         self.alternate = alternate
 
 class FunctionStatement(Statement):
-    def __init__(self, name: str, body: BlockStatement, line: int) -> None:
+    def __init__(self, name: Word, body: BlockStatement, line: int) -> None:
         super().__init__(StatementType.FUNCTION_DEFINITION, line)
         self.name = name
         self.body = body

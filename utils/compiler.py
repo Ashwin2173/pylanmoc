@@ -2,7 +2,6 @@ import re
 
 from utils.models import (
     Word,
-    Integer,
     Program,
     Statement,
     Identifier,
@@ -11,6 +10,7 @@ from utils.models import (
     StringLiteral,
     BlockStatement,
     BooleanLiteral,
+    IntegerLiteral,
     CallExpression,
     ReturnStatement,
     UnaryExpression,
@@ -20,6 +20,7 @@ from utils.models import (
     AssignmentStatement,
     VariableDeclaration,
 )
+from utils.byte_generator import ByteGenerator
 from utils.constants import TOKEN_GRAMMAR
 from utils.enums import StatementType, TokenType
 from utils.exceptions import LanmoSyntaxError
@@ -32,9 +33,10 @@ class Compiler:
         self.__pos: int = 0
         self.tokens = self.__tokens
 
-    def compile(self) -> None:
+    def compile(self) -> bytearray:
         program = self.__scan_program()
-        print(program)
+        bg = ByteGenerator(program)
+        return bg.pack_byte_code()
 
     def __scan_program(self) -> Program:
         body = self.__scan_global_statements()
@@ -57,7 +59,7 @@ class Compiler:
         expect_token(self.__next_required("Expected '(' after function name"), TokenType.OPEN_PARAM)
         expect_token(self.__next_required("Expected ')' after function parameters"), TokenType.CLOSE_PARAM)
         return FunctionStatement(
-            name=name.get_raw(),
+            name=name,
             body=self.__scan_block_statement(),
             line=name.get_line()
         )
@@ -249,7 +251,7 @@ class Compiler:
         line = token.get_line()
         token_type = token.get_type()
         if token_type == TokenType.INTEGER:
-            return Integer(token, line)
+            return IntegerLiteral(token, line)
         if token_type == TokenType.FLOAT:
             return FloatLiteral(token, line)
         if token_type == TokenType.STRING:

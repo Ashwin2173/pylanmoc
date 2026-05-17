@@ -1,4 +1,8 @@
+from utils.enums import StatementType
+
 FILE_EXTENSION = ".lm"
+COMPILE_EXTENSION = ".lmc"
+MAGIC = 2273
 MAJOR_VERSION = 1
 MINOR_VERSION = 0
 
@@ -37,3 +41,21 @@ TOKEN_GRAMMAR = r"""
 | (?P<STRING>"(?:\\.|[^"\\])*")                           # double-quoted strings with escape support
 | (?P<NEWLINE>\n)                                         # new line
 """
+
+UNA_MINUS = 1
+UNA_BANG = 2
+
+BIN_OP_LOOKUP = {
+    StatementType.BINARY_ADD: 1,
+    StatementType.BINARY_SUB: 2,
+    StatementType.BINARY_MUL: 3,
+    StatementType.BINARY_DIV: 4, # todo: Add mod (5)
+    StatementType.BINARY_EQUAL_EQUAL: 6,
+    StatementType.BINARY_BANG_EQUAL: 7,
+    StatementType.BINARY_GREATER_EQUALS: 8,
+    StatementType.BINARY_GREATER: 9,
+    StatementType.BINARY_LESSER_EQUALS: 10,
+    StatementType.BINARY_AND: 12,
+    StatementType.BINARY_LESSER: 11,
+    StatementType.BINARY_OR: 13
+}
