@@ -18,7 +18,7 @@ from utils.models import (
     FunctionStatement,
     ExpressionStatement,
     AssignmentStatement,
-    VariableDeclaration,
+    VariableDeclaration, NullLiteral,
 )
 from utils.byte_generator import ByteGenerator
 from utils.constants import TOKEN_GRAMMAR
@@ -111,8 +111,10 @@ class Compiler:
         )
 
     def __scan_if_statement(self, token: Word) -> IfStatement:
-        self.__next_required("Expected expression after 'if'")
+        next_token = self.__next_required("Expected expression after 'if'")
+        expect_token(next_token, TokenType.OPEN_PARAM)
         test_expression = self.__scan_raw_expression()
+        expect_token(self.__peek(offset=-1), TokenType.CLOSE_PARAM)
         consequent = self.__scan_local_statement(self.__next())
         alternate = None
         if self.__peek().get_type() == TokenType.K_ELSE:
@@ -256,6 +258,8 @@ class Compiler:
             return FloatLiteral(token, line)
         if token_type == TokenType.STRING:
             return StringLiteral(token, line)
+        if token_type == TokenType.K_NULL:
+            return NullLiteral(token, line)
         if token_type == TokenType.K_TRUE or token_type == TokenType.K_FALSE:
             return BooleanLiteral(token, line)
         if token_type == TokenType.IDENTIFIER:

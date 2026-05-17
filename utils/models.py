@@ -71,6 +71,11 @@ class StringLiteral(ExpressionStatement):
         super().__init__(StatementType.STRING, line)
         self.token = token
 
+class NullLiteral(ExpressionStatement):
+    def __init__(self, token: Word, line: int):
+        super().__init__(StatementType.NULL, line)
+        self.token = token
+
 class BooleanLiteral(ExpressionStatement):
     def __init__(self, token: Word, line: int):
         super().__init__(StatementType.BOOLEAN, line)

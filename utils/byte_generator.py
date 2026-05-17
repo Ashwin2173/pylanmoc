@@ -8,7 +8,7 @@ from utils.models import (
     Program,
     BlockStatement,
     FunctionStatement, ReturnStatement, ByteBlob, BinaryExpression, ExpressionStatement, IntegerLiteral, StringLiteral,
-    BooleanLiteral, Identifier, CallExpression
+    BooleanLiteral, Identifier, CallExpression, NullLiteral, IfStatement
 )
 from utils.enums import StatementType, DataType, OpCodeType, TokenType
 
@@ -92,6 +92,8 @@ class ByteGenerator:
             return self.__push(DataType.INTEGER, cast(IntegerLiteral, exp).token)
         elif exp.get_type() == StatementType.STRING:
             return self.__push(DataType.STRING, cast(StringLiteral, exp).token)
+        elif exp.get_type() == StatementType.NULL:
+            return self.__push(DataType.NONE, cast(NullLiteral, exp).token)
         raise NotImplementedError(exp.get_type())
 
     def __push(self, data_type: DataType, value: Word) -> ByteBlob:

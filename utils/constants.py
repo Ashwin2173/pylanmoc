@@ -23,6 +23,7 @@ TOKEN_GRAMMAR = r"""
 | (?P<K_NOT>\bnot\b)                                      # logical not
 | (?P<K_IF>\bif\b)                                        # if keyword 
 | (?P<K_ELSE>\belse\b)                                    # else keyword 
+| (?P<K_NULL>\bnull\b)                                    # null keyword 
 | (?P<EQUAL_EQUAL>==)                                     # equal
 | (?P<ASSIGN>=)                                           # assignment (after ==)
 | (?P<COMMA>,)                                            # comma 

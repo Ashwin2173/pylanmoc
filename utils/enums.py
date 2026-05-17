@@ -26,6 +26,7 @@ class TokenType(Enum):
     K_NOT = "not"
     K_IF = "if"
     K_ELSE = "else"
+    K_NULL = "null"
 
     PLUS = "PLUS"
     MINUS = "MINUS"
@@ -52,6 +53,7 @@ class StatementType(Enum):
     FLOAT = auto()
     STRING = auto()
     BOOLEAN = auto()
+    NULL = auto()
 
     UNARY_PLUS = auto()
     UNARY_MINUS = auto()
