@@ -90,7 +90,7 @@ class ReturnStatement(Statement):
         self.expression = expression
 
 class VariableDeclaration(Statement):
-    def __init__(self, name: str, initializer: ExpressionStatement, line: int) -> None:
+    def __init__(self, name: Word, initializer: ExpressionStatement, line: int) -> None:
         super().__init__(StatementType.VARIABLE_DECLARATION, line)
         self.name = name
         self.initializer = initializer
@@ -120,9 +120,15 @@ class FunctionStatement(Statement):
         self.body = body
 
 class Program:
-    def __init__(self, body: list[Statement], frame_names: set[str]):
+    def __init__(self, body: list[Statement], frame_names: set[str]) -> None:
         self.body = body
         self.frame_names = frame_names
 
     def get_body(self) -> list[Statement]:
         return self.body
+
+class Trace:
+    def __init__(self, context: StatementType, line: int) -> None:
+        self.context = context
+        self.line = line
+        self.variables = dict()

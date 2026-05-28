@@ -7,6 +7,7 @@ from utils.models import (
     Statement,
     Identifier,
     IfStatement,
+    NullLiteral,
     FloatLiteral,
     StringLiteral,
     BlockStatement,
@@ -19,13 +20,12 @@ from utils.models import (
     FunctionStatement,
     ExpressionStatement,
     AssignmentStatement,
-    VariableDeclaration, NullLiteral,
+    VariableDeclaration,
 )
 from utils.byte_generator import ByteCodeGenerator
 from utils.constants import TOKEN_GRAMMAR, BUILT_IN_METHODS
 from utils.enums import StatementType, TokenType
 from utils.exceptions import LanmoSyntaxError
-
 
 class Compiler:
     def __init__(self, source: str) -> None:
@@ -137,7 +137,7 @@ class Compiler:
         initializer = self.__scan_logical_or()
         expect_token(self.__next_required("Expected ';' after variable declaration"), TokenType.SEMI_COLON)
         return VariableDeclaration(
-            name=name_token.get_raw(),
+            name=name_token,
             initializer=initializer,
             line=var_token.get_line()
         )
@@ -274,10 +274,14 @@ class Compiler:
         if token_type == TokenType.K_TRUE or token_type == TokenType.K_FALSE:
             return BooleanLiteral(token, line)
         if token_type == TokenType.IDENTIFIER:
-            if token.get_raw() in BUILT_IN_METHODS: self.frame_names.add(token.get_raw())
-            return Identifier(token, line)
+            return self.__scan_identifier(token, line)
         print(f"[ LOG ] {token}")
         raise LanmoSyntaxError(token, "Invalid Syntax")
+
+    def __scan_identifier(self, token: Word, line: int) -> Identifier:
+        if token.get_raw() in BUILT_IN_METHODS:
+            self.frame_names.add(token.get_raw())
+        return Identifier(token, line)
 
     def __match(self, *types: TokenType) -> bool:
         return self.__peek().get_type() in types

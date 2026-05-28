@@ -17,6 +17,7 @@ from utils.models import (
     BinaryExpression,
     FunctionStatement,
     ExpressionStatement,
+    VariableDeclaration, Trace,
 )
 from utils.enums import StatementType, DataType, OpCodeType, TokenType
 
@@ -25,10 +26,13 @@ class ByteCodeGenerator:
         self.program = program
 
         self.raw_symbols = dict()
+        self.function_count = 0
+
         self.symbol_table = bytearray()
         self.program_code = bytearray()
-        self.inst_pointer: Instruction | None = None
-        self.function_count = 0
+
+        self.instructions: Instruction | None = None
+        self.stack_trace: StackTrace | None = None
 
     def pack_byte_code(self) -> bytearray:
         self.__handle_global_statements()
@@ -51,40 +55,47 @@ class ByteCodeGenerator:
 
     def __handle_function(self, function: FunctionStatement) -> None:
         self.function_count += 1
-        self.inst_pointer = Instruction()
+        self.instructions = Instruction()
+        self.stack_trace = StackTrace()
+
         index = self.__add_constant(DataType.FUNCTION, function.name)
-        self.__handle_block(function.body)
+        self.__handle_block(StatementType.FUNCTION_DEFINITION, function.body)
         frame = bytearray()
         frame += struct.pack("<H", index)
-        frame += struct.pack("<I", 0)
+        frame += struct.pack("<I", self.stack_trace.slot_size)
         frame += struct.pack("<H", 255)
-        frame += struct.pack("<I", self.inst_pointer.get_count())
-        frame += self.inst_pointer.get_raw()
+        frame += struct.pack("<I", self.instructions.get_count())
+        frame += self.instructions.get_raw()
         self.program_code += frame
 
-    def __handle_block(self, block: BlockStatement) -> None:
+    def __handle_block(self, stmt_type: StatementType, block: BlockStatement) -> None:
+        self.stack_trace.push(stmt_type, block.get_line())
         for statement in block.body:
             if statement.get_type() == StatementType.RETURN_STATEMENT:
                 self.__handle_return(cast(ReturnStatement, statement))
+            elif statement.get_type() == StatementType.VARIABLE_DECLARATION:
+                self.__handle_variable_declaration(cast(VariableDeclaration, statement))
             else:
                 self.__handle_expression(cast(ExpressionStatement, statement))
 
-    def __handle_call_statement(self, call_exp: CallExpression) -> None:
-        self.__handle_expression(call_exp.callee)
-        for argument in call_exp.arguments:
-            self.__handle_expression(argument)
-        self.inst_pointer.push_inst(OpCodeType.CALL, len(call_exp.arguments))
+    def __handle_variable_declaration(self, declaration: VariableDeclaration) -> None:
+        name = declaration.name
+        if self.__is_function(name):
+            raise LanmoSyntaxError(name, f"Identifier '{ name.get_raw() }' is already defined as a function")
+        self.__handle_expression(declaration.initializer)
+        slot_id = self.stack_trace.create_variable(declaration.name)
+        self.instructions.push_inst(OpCodeType.STORE, slot_id)
 
     def __handle_return(self, return_stmt: ReturnStatement) -> None:
         self.__handle_expression(return_stmt.expression)
-        self.inst_pointer.push_inst(OpCodeType.RETURN, 0)
+        self.instructions.push_inst(OpCodeType.RETURN, 0)
 
     def __handle_expression(self, exp: ExpressionStatement) -> None:
         if exp.get_type() in BIN_OP_LOOKUP:
             bin_exp: BinaryExpression = cast(BinaryExpression, exp)
             self.__handle_expression(bin_exp.left)
             self.__handle_expression(bin_exp.right)
-            self.inst_pointer.push_inst(OpCodeType.BIN_OP.value, BIN_OP_LOOKUP[exp.s_type])
+            self.instructions.push_inst(OpCodeType.BIN_OP, BIN_OP_LOOKUP[exp.s_type])
         elif exp.get_type() == StatementType.CALL_EXPRESSION:
             self.__handle_call_statement(cast(CallExpression, exp))
         elif exp.get_type() == StatementType.IDENTIFIER:
@@ -100,16 +111,26 @@ class ByteCodeGenerator:
         else:
             raise NotImplementedError(exp.get_type())
 
+    def __handle_call_statement(self, call_exp: CallExpression) -> None:
+        self.__handle_expression(call_exp.callee)
+        for argument in call_exp.arguments:
+            self.__handle_expression(argument)
+        self.instructions.push_inst(OpCodeType.CALL, len(call_exp.arguments))
+
     def __handle_identifier(self, identifier: Identifier) -> None:
-        raw_token = identifier.token.get_raw()
-        if raw_token in self.program.frame_names or raw_token in BUILT_IN_METHODS:
+        if self.__is_function(identifier.token):
             self.__push(DataType.FUNCTION, identifier.token)
         else:
-            self.__push(DataType.VARIABLE, identifier.token)
+            slot_id = self.stack_trace.get_variable(identifier.token)
+            self.instructions.push_inst(OpCodeType.LOAD, slot_id)
 
     def __push(self, data_type: DataType, value: Word) -> None:
         index = self.__add_constant(data_type, value)
-        self.inst_pointer.push_inst(OpCodeType.PUSH, index)
+        self.instructions.push_inst(OpCodeType.PUSH, index)
+
+    def __is_function(self, token: Word) -> bool:
+        raw_token = token.get_raw()
+        return raw_token in self.program.frame_names or raw_token in BUILT_IN_METHODS
 
     def __add_constant(self, data_type: DataType, value: Word | None) -> int:
         raw_data = None if value is None else value.get_raw()
@@ -148,3 +169,33 @@ class Instruction:
     def push_inst(self, opcode: OpCodeType, value: int=0) -> int:
         self.instructions.append((opcode, value))
         return self.get_count()
+
+class StackTrace:
+    def __init__(self) -> None:
+        self.stack: list[Trace] = list()
+        self.available_slots = list()
+        self.slot_size = 0
+
+    def push(self, context: StatementType, line: int) -> None:
+        self.stack.append(Trace(context, line))
+
+    def pop(self) -> None:
+        self.available_slots += list(self.stack[-1].variables.values())
+        self.stack.pop()
+
+    def create_variable(self, token: Word) -> int:
+        if len(self.available_slots) != 0:
+            slot_id = self.available_slots.pop()
+        else:
+            slot_id = self.slot_size
+            self.slot_size += 1
+        self.stack[-1].variables[token.get_raw()] = slot_id
+        return slot_id
+
+    def get_variable(self, token: Word) -> int:
+        name = token.get_raw()
+        for stack_index in range(len(self.stack), 0, -1):
+            stack_variables = self.stack[-stack_index].variables
+            if name in stack_variables:
+                return stack_variables[name]
+        raise LanmoSyntaxError(token, f"Variable '{token.get_raw()}' referred before declaration")
