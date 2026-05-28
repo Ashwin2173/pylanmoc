@@ -25,6 +25,7 @@ class TokenType(Enum):
     K_OR = "or"
     K_NOT = "not"
     K_IF = "if"
+    K_WHILE = "while"
     K_ELSE = "else"
     K_NULL = "null"
 
@@ -59,6 +60,7 @@ class StatementType(Enum):
     UNARY_MINUS = auto()
     UNARY_BANG = auto()
 
+    BINARY_ASSIGN = auto()
     BINARY_OR = auto()
     BINARY_AND = auto()
     BINARY_EQUAL_EQUAL = auto()
@@ -76,6 +78,7 @@ class StatementType(Enum):
     VARIABLE_DECLARATION = auto()
     ASSIGNMENT_STATEMENT = auto()
     IF_STATEMENT = auto()
+    WHILE_STATEMENT = auto()
 
 
 class DataType(Enum):

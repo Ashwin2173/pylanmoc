@@ -1,0 +1,6 @@
+function main() {
+    print("Enter your name: ");
+    var name = input();
+    print("The length of your name is", len(name), "chars");
+    return null;
+}

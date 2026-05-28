@@ -22,6 +22,7 @@ TOKEN_GRAMMAR = r"""
 | (?P<K_OR>\bor\b)                                        # logical or
 | (?P<K_NOT>\bnot\b)                                      # logical not
 | (?P<K_IF>\bif\b)                                        # if keyword 
+| (?P<K_WHILE>\bwhile\b)                                  # while keyword 
 | (?P<K_ELSE>\belse\b)                                    # else keyword 
 | (?P<K_NULL>\bnull\b)                                    # null keyword 
 | (?P<EQUAL_EQUAL>==)                                     # equal
@@ -56,7 +57,15 @@ BIN_OP_LOOKUP = {
     StatementType.BINARY_GREATER_EQUALS: 8,
     StatementType.BINARY_GREATER: 9,
     StatementType.BINARY_LESSER_EQUALS: 10,
-    StatementType.BINARY_AND: 12,
     StatementType.BINARY_LESSER: 11,
+    StatementType.BINARY_AND: 12,
     StatementType.BINARY_OR: 13
+}
+
+BUILT_IN_METHODS = {
+    "print",
+    "input",
+    "len",
+    "int",
+    "now"
 }
