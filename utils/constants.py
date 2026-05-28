@@ -54,10 +54,10 @@ BIN_OP_LOOKUP = {
     StatementType.BINARY_DIV: 4, # todo: Add mod (5)
     StatementType.BINARY_EQUAL_EQUAL: 6,
     StatementType.BINARY_BANG_EQUAL: 7,
-    StatementType.BINARY_LESSER_EQUALS: 8,
-    StatementType.BINARY_LESSER: 9,
-    StatementType.BINARY_GREATER_EQUALS: 10,
-    StatementType.BINARY_GREATER: 11,
+    StatementType.BINARY_GREATER_EQUALS: 8,
+    StatementType.BINARY_GREATER: 9,
+    StatementType.BINARY_LESSER_EQUALS: 10,
+    StatementType.BINARY_LESSER: 11,
     StatementType.BINARY_AND: 12,
     StatementType.BINARY_OR: 13
 }
@@ -66,5 +66,6 @@ BUILT_IN_METHODS = {
     "print",
     "input",
     "len",
-    "time"
+    "int",
+    "now"
 }

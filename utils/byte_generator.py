@@ -88,6 +88,7 @@ class ByteCodeGenerator:
             self.__handle_block(StatementType.BLOCK_STATEMENT, cast(BlockStatement, statement))
         else:
             self.__handle_expression(cast(ExpressionStatement, statement))
+            self.instructions.push_inst(OpCodeType.POP)
 
     def __handle_while_statement(self, stmt: WhileStatement) -> None:
         loop_pointer = self.instructions.get_count() - 1
