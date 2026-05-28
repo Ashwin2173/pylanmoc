@@ -60,3 +60,10 @@ BIN_OP_LOOKUP = {
     StatementType.BINARY_LESSER: 11,
     StatementType.BINARY_OR: 13
 }
+
+BUILT_IN_METHODS = {
+    "print",
+    "input",
+    "len",
+    "time"
+}

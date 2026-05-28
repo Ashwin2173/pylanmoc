@@ -1,4 +1,5 @@
 import re
+from typing import cast
 
 from utils.models import (
     Word,
@@ -20,8 +21,8 @@ from utils.models import (
     AssignmentStatement,
     VariableDeclaration, NullLiteral,
 )
-from utils.byte_generator import ByteGenerator
-from utils.constants import TOKEN_GRAMMAR
+from utils.byte_generator import ByteCodeGenerator
+from utils.constants import TOKEN_GRAMMAR, BUILT_IN_METHODS
 from utils.enums import StatementType, TokenType
 from utils.exceptions import LanmoSyntaxError
 
@@ -30,17 +31,17 @@ class Compiler:
     def __init__(self, source: str) -> None:
         self.source = source
         self.__tokens: list[Word] = self.__tokenize()
+        self.frame_names = set()
         self.__pos: int = 0
-        self.tokens = self.__tokens
 
     def compile(self) -> bytearray:
         program = self.__scan_program()
-        bg = ByteGenerator(program)
+        bg = ByteCodeGenerator(program)
         return bg.pack_byte_code()
 
     def __scan_program(self) -> Program:
         body = self.__scan_global_statements()
-        return Program(body=body)
+        return Program(body=body, frame_names=self.frame_names)
 
     def __scan_global_statements(self) -> list[Statement]:
         global_statements: list[Statement] = list()
@@ -56,6 +57,7 @@ class Compiler:
 
     def __scan_function_definition(self) -> FunctionStatement:
         name = self.__next_required("Expected function name after 'function'")
+        self.frame_names.add(name.get_raw())
         expect_token(self.__next_required("Expected '(' after function name"), TokenType.OPEN_PARAM)
         expect_token(self.__next_required("Expected ')' after function parameters"), TokenType.CLOSE_PARAM)
         return FunctionStatement(
@@ -150,22 +152,6 @@ class Compiler:
             line=name_token.get_line()
         )
 
-    def __scan_call_expression(self, token: Word) -> CallExpression:
-        self.__next_required("Expected '(' in function call")
-        arguments = list()
-        while True:
-            next_token = self.__next_required("Expected ')' or ',' in function args")
-            if next_token.get_type() == TokenType.CLOSE_PARAM:
-                break
-            arguments.append(self.__scan_raw_expression())
-            if self.__peek().get_type() == TokenType.COMMA:
-                self.__next()
-        return CallExpression(
-            callee=token,
-            arguments=arguments,
-            line=token.get_line()
-        )
-
     def __scan_raw_expression(self) -> ExpressionStatement:
         self.__pos -= 1
         return self.__scan_logical_or()
@@ -246,7 +232,32 @@ class Compiler:
             if token.get_type() == TokenType.MINUS:
                 return UnaryExpression(right, StatementType.UNARY_MINUS, token.get_line())
             return UnaryExpression(right, StatementType.UNARY_PLUS, token.get_line())
-        return self.__scan_primary()
+        return self.__scan_postfix()
+
+    def __finish_call_expression(self, expr: ExpressionStatement) -> CallExpression:
+        token = self.__next_required("Expected '(' in function call")
+        arguments = list()
+        while True:
+            next_token = self.__next_required("Expected ')' or ',' in function args")
+            if next_token.get_type() == TokenType.CLOSE_PARAM:
+                break
+            arguments.append(self.__scan_raw_expression())
+            if self.__peek().get_type() == TokenType.COMMA:
+                self.__next()
+        return CallExpression(
+            callee=expr,
+            arguments=arguments,
+            line=token.get_line()
+        )
+
+    def __scan_postfix(self) -> ExpressionStatement:
+        expr = self.__scan_primary()
+        while True:
+            if self.__match(TokenType.OPEN_PARAM):
+                expr = self.__finish_call_expression(expr)
+            else:
+                break
+        return expr
 
     def __scan_primary(self) -> ExpressionStatement:
         token = self.__next()
@@ -263,22 +274,10 @@ class Compiler:
         if token_type == TokenType.K_TRUE or token_type == TokenType.K_FALSE:
             return BooleanLiteral(token, line)
         if token_type == TokenType.IDENTIFIER:
-            return self.__scan_identifier(token, line)
-        if token_type == TokenType.OPEN_PARAM:
-            inner = self.__scan_logical_or()
-            expect_token(self.__next(), TokenType.CLOSE_PARAM)
-            return inner
+            if token.get_raw() in BUILT_IN_METHODS: self.frame_names.add(token.get_raw())
+            return Identifier(token, line)
         print(f"[ LOG ] {token}")
         raise LanmoSyntaxError(token, "Invalid Syntax")
-
-    def __scan_identifier(self, token: Word, line: int) -> ExpressionStatement:
-        next_token = self.__peek()
-        if next_token.get_type() == TokenType.ASSIGN:
-            return self.__scan_assignment_statement(token)
-        elif next_token.get_type() == TokenType.OPEN_PARAM:
-            return self.__scan_call_expression(token)
-        expect_token(token, TokenType.IDENTIFIER)
-        return Identifier(token, line)
 
     def __match(self, *types: TokenType) -> bool:
         return self.__peek().get_type() in types
@@ -306,7 +305,7 @@ class Compiler:
             else:
                 raw = item.group()
                 token_span = (item.start(), item.end())
-                tokens.append(Word(raw, token_type, line, token_span))
+                tokens.append(Word(raw, cast(TokenType, token_type), line, token_span))
         tokens.append(Word("EOF", TokenType.K_EOF, 0, (0, 0)))
         return tokens
 

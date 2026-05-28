@@ -1,30 +1,37 @@
 import struct
 from typing import cast
 
-from utils.constants import BIN_OP_LOOKUP, MAGIC, MAJOR_VERSION, MINOR_VERSION
+from utils.constants import BIN_OP_LOOKUP, MAGIC, MAJOR_VERSION, MINOR_VERSION, BUILT_IN_METHODS
 from utils.exceptions import LanmoSyntaxError
 from utils.models import (
     Word,
     Program,
+    Identifier,
+    NullLiteral,
+    StringLiteral,
+    BooleanLiteral,
+    IntegerLiteral,
+    CallExpression,
     BlockStatement,
-    FunctionStatement, ReturnStatement, ByteBlob, BinaryExpression, ExpressionStatement, IntegerLiteral, StringLiteral,
-    BooleanLiteral, Identifier, CallExpression, NullLiteral, IfStatement
+    ReturnStatement,
+    BinaryExpression,
+    FunctionStatement,
+    ExpressionStatement,
 )
 from utils.enums import StatementType, DataType, OpCodeType, TokenType
 
-
-class ByteGenerator:
+class ByteCodeGenerator:
     def __init__(self, program: Program) -> None:
         self.program = program
 
         self.raw_symbols = dict()
         self.symbol_table = bytearray()
         self.program_code = bytearray()
+        self.inst_pointer: Instruction | None = None
         self.function_count = 0
 
-        self.__handle_global_statements()
-
     def pack_byte_code(self) -> bytearray:
+        self.__handle_global_statements()
         if len(self.raw_symbols) >= 65534:
             raise LanmoSyntaxError(None, "The file contains too many symbols")
         bc = bytearray()
@@ -44,68 +51,69 @@ class ByteGenerator:
 
     def __handle_function(self, function: FunctionStatement) -> None:
         self.function_count += 1
+        self.inst_pointer = Instruction()
         index = self.__add_constant(DataType.FUNCTION, function.name)
-        bb = self.__handle_block(function.body)
+        self.__handle_block(function.body)
         frame = bytearray()
         frame += struct.pack("<H", index)
         frame += struct.pack("<I", 0)
         frame += struct.pack("<H", 255)
-        frame += struct.pack("<I", bb.opcode_count)
-        frame += bb.opcode_array
+        frame += struct.pack("<I", self.inst_pointer.get_count())
+        frame += self.inst_pointer.get_raw()
         self.program_code += frame
 
-    def __handle_block(self, block: BlockStatement) -> ByteBlob:
-        bb = ByteBlob()
+    def __handle_block(self, block: BlockStatement) -> None:
         for statement in block.body:
             if statement.get_type() == StatementType.RETURN_STATEMENT:
-                bb.add(self.__handle_return(cast(ReturnStatement, statement)))
+                self.__handle_return(cast(ReturnStatement, statement))
             else:
-                bb.add(self.__handle_expression(cast(ExpressionStatement, statement)))
-        return bb
+                self.__handle_expression(cast(ExpressionStatement, statement))
 
-    def __handle_call_statement(self, call_exp: CallExpression) -> ByteBlob:
-        bb = self.__push(DataType.FUNCTION, call_exp.callee)
+    def __handle_call_statement(self, call_exp: CallExpression) -> None:
+        self.__handle_expression(call_exp.callee)
         for argument in call_exp.arguments:
-            bb.add(self.__handle_expression(argument))
-        bb.add_raw(struct.pack("<BH", OpCodeType.CALL.value, len(call_exp.arguments)))
-        return bb
+            self.__handle_expression(argument)
+        self.inst_pointer.push_inst(OpCodeType.CALL, len(call_exp.arguments))
 
-    def __handle_return(self, return_stmt: ReturnStatement) -> ByteBlob:
-        bb = self.__handle_expression(return_stmt.expression)
-        bb.add_raw(struct.pack("<BH", OpCodeType.RETURN.value, 0))
-        return bb
+    def __handle_return(self, return_stmt: ReturnStatement) -> None:
+        self.__handle_expression(return_stmt.expression)
+        self.inst_pointer.push_inst(OpCodeType.RETURN, 0)
 
-    def __handle_expression(self, exp: ExpressionStatement) -> ByteBlob:
+    def __handle_expression(self, exp: ExpressionStatement) -> None:
         if exp.get_type() in BIN_OP_LOOKUP:
             bin_exp: BinaryExpression = cast(BinaryExpression, exp)
-            bb = self.__handle_expression(bin_exp.left)
-            bb.add(self.__handle_expression(bin_exp.right))
-            bb.add_raw(struct.pack("<BH", OpCodeType.BIN_OP.value, BIN_OP_LOOKUP[exp.s_type]))
-            return bb
+            self.__handle_expression(bin_exp.left)
+            self.__handle_expression(bin_exp.right)
+            self.inst_pointer.push_inst(OpCodeType.BIN_OP.value, BIN_OP_LOOKUP[exp.s_type])
         elif exp.get_type() == StatementType.CALL_EXPRESSION:
-            return self.__handle_call_statement(cast(CallExpression, exp))
+            self.__handle_call_statement(cast(CallExpression, exp))
         elif exp.get_type() == StatementType.IDENTIFIER:
-            return self.__push(DataType.VARIABLE, cast(Identifier, exp).token)
+            self.__handle_identifier(cast(Identifier, exp))
         elif exp.get_type() == StatementType.BOOLEAN:
-            return self.__push(DataType.BOOLEAN, cast(BooleanLiteral, exp).token)
+            self.__push(DataType.BOOLEAN, cast(BooleanLiteral, exp).token)
         elif exp.get_type() == StatementType.INTEGER:
-            return self.__push(DataType.INTEGER, cast(IntegerLiteral, exp).token)
+            self.__push(DataType.INTEGER, cast(IntegerLiteral, exp).token)
         elif exp.get_type() == StatementType.STRING:
-            return self.__push(DataType.STRING, cast(StringLiteral, exp).token)
+            self.__push(DataType.STRING, cast(StringLiteral, exp).token)
         elif exp.get_type() == StatementType.NULL:
-            return self.__push(DataType.NONE, cast(NullLiteral, exp).token)
-        raise NotImplementedError(exp.get_type())
+            self.__push(DataType.NONE, cast(NullLiteral, exp).token)
+        else:
+            raise NotImplementedError(exp.get_type())
 
-    def __push(self, data_type: DataType, value: Word) -> ByteBlob:
+    def __handle_identifier(self, identifier: Identifier) -> None:
+        raw_token = identifier.token.get_raw()
+        if raw_token in self.program.frame_names or raw_token in BUILT_IN_METHODS:
+            self.__push(DataType.FUNCTION, identifier.token)
+        else:
+            self.__push(DataType.VARIABLE, identifier.token)
+
+    def __push(self, data_type: DataType, value: Word) -> None:
         index = self.__add_constant(data_type, value)
-        return ByteBlob(
-            opcode_array = struct.pack("<BH",OpCodeType.PUSH.value, index),
-            opcode_count = 1
-        )
+        self.inst_pointer.push_inst(OpCodeType.PUSH, index)
 
     def __add_constant(self, data_type: DataType, value: Word | None) -> int:
         raw_data = None if value is None else value.get_raw()
-        lookup_key = f"{data_type.value}{raw_data}"
+        lookup_key = f"{data_type.value}:{raw_data}"
         if lookup_key in self.raw_symbols:
             return self.raw_symbols[lookup_key]
         match data_type:
@@ -123,3 +131,20 @@ class ByteGenerator:
                 raise NotImplementedError(data_type)
         self.raw_symbols[lookup_key] = len(self.raw_symbols)
         return self.raw_symbols[lookup_key]
+
+class Instruction:
+    def __init__(self):
+        self.instructions = list[tuple[OpCodeType, int]]()
+
+    def get_raw(self) -> bytearray:
+        raw_instructions = bytearray()
+        for instruction in self.instructions:
+            raw_instructions += struct.pack("<BH", instruction[0].value, instruction[1])
+        return raw_instructions
+
+    def get_count(self) -> int:
+        return len(self.instructions)
+
+    def push_inst(self, opcode: OpCodeType, value: int=0) -> int:
+        self.instructions.append((opcode, value))
+        return self.get_count()

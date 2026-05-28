@@ -22,19 +22,6 @@ class Word:
     def __str__(self):
         return f"{self.w_type} '{self.w_raw}' at line: {self.w_line}"
 
-class ByteBlob:
-    def __init__(self, opcode_array: bytearray | bytes=None, opcode_count: int = 0):
-        self.opcode_array = bytearray() if opcode_array is None else opcode_array
-        self.opcode_count = opcode_count
-
-    def add(self, blob: 'ByteBlob') -> None:
-        self.opcode_array += blob.opcode_array
-        self.opcode_count += blob.opcode_count
-
-    def add_raw(self, byte_data: bytearray | bytes) -> None:
-        self.opcode_array += byte_data
-        self.opcode_count += 1
-
 class Statement:
     def __init__(self, s_type: StatementType, s_line: int) -> None:
         self.s_type = s_type
@@ -51,7 +38,7 @@ class ExpressionStatement(Statement):
         super().__init__(s_type, line)
 
 class CallExpression(ExpressionStatement):
-    def __init__(self, callee: Word, arguments: list[ExpressionStatement], line: int):
+    def __init__(self, callee: ExpressionStatement, arguments: list[ExpressionStatement], line: int):
         super().__init__(StatementType.CALL_EXPRESSION, line)
         self.callee = callee
         self.arguments = arguments
@@ -133,8 +120,9 @@ class FunctionStatement(Statement):
         self.body = body
 
 class Program:
-    def __init__(self, body: list[Statement]):
+    def __init__(self, body: list[Statement], frame_names: set[str]):
         self.body = body
+        self.frame_names = frame_names
 
     def get_body(self) -> list[Statement]:
         return self.body
