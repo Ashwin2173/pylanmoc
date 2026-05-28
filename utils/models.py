@@ -100,6 +100,12 @@ class BlockStatement(Statement):
         super().__init__(StatementType.BLOCK_STATEMENT, line)
         self.body = body
 
+class WhileStatement(Statement):
+    def __init__(self, test: ExpressionStatement, body: Statement, line: int) -> None:
+        super().__init__(StatementType.WHILE_STATEMENT, line)
+        self.test = test
+        self.body = body
+
 class IfStatement(Statement):
     def __init__(self, test: ExpressionStatement, consequent: Statement, alternate: Statement, line: int) -> None:
         super().__init__(StatementType.IF_STATEMENT, line)

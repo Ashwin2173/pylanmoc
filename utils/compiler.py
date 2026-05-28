@@ -11,6 +11,7 @@ from utils.models import (
     FloatLiteral,
     StringLiteral,
     BlockStatement,
+    WhileStatement,
     BooleanLiteral,
     IntegerLiteral,
     CallExpression,
@@ -89,6 +90,9 @@ class Compiler:
         if token.get_type() == TokenType.K_IF:
             self.__next()
             return self.__scan_if_statement(token)
+        if token.get_type() == TokenType.K_WHILE:
+            self.__next() # todo: fix this shit
+            return self.__scan_while_statement(token)
         if token.get_type() == TokenType.OPEN_BRACE:
             self.__pos -= 1
             return self.__scan_block_statement()
@@ -111,6 +115,19 @@ class Compiler:
         expect_token(self.__next_required("Expected ';' after return expression"), TokenType.SEMI_COLON)
         return ReturnStatement(
             expression=expression,
+            line=token.get_line()
+        )
+
+    def __scan_while_statement(self, token: Word) -> WhileStatement:
+        next_token = self.__next_required("Expected expression after 'while'")
+        expect_token(next_token, TokenType.OPEN_PARAM)
+        test_expression = self.__scan_expression()
+        expect_token(self.__peek(), TokenType.CLOSE_PARAM)
+        self.__next()
+        body = self.__scan_local_statement(self.__next())
+        return WhileStatement(
+            test=test_expression,
+            body=body,
             line=token.get_line()
         )
 

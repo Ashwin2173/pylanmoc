@@ -17,7 +17,7 @@ from utils.models import (
     BinaryExpression,
     FunctionStatement,
     ExpressionStatement,
-    VariableDeclaration, Trace, IfStatement, Statement,
+    VariableDeclaration, Trace, IfStatement, Statement, WhileStatement,
 )
 from utils.enums import StatementType, DataType, OpCodeType, TokenType
 
@@ -82,10 +82,20 @@ class ByteCodeGenerator:
             self.__handle_variable_declaration(cast(VariableDeclaration, statement))
         elif statement.get_type() == StatementType.IF_STATEMENT:
             self.__handle_if_statement(cast(IfStatement, statement))
+        elif statement.get_type() == StatementType.WHILE_STATEMENT:
+            self.__handle_while_statement(cast(WhileStatement, statement))
         elif statement.get_type() == StatementType.BLOCK_STATEMENT:
             self.__handle_block(StatementType.BLOCK_STATEMENT, cast(BlockStatement, statement))
         else:
             self.__handle_expression(cast(ExpressionStatement, statement))
+
+    def __handle_while_statement(self, stmt: WhileStatement) -> None:
+        loop_pointer = self.instructions.get_count() - 1
+        self.__handle_expression(stmt.test)
+        condition_pointer = self.instructions.push_inst(OpCodeType.JUMP_IF_FALSE) - 1
+        self.__handle_statement(stmt.body)
+        self.instructions.push_inst(OpCodeType.JUMP, loop_pointer)
+        self.instructions.update_inst(condition_pointer, self.instructions.get_count())
 
     def __handle_if_statement(self, stmt: IfStatement) -> None:
         self.__handle_expression(stmt.test)
