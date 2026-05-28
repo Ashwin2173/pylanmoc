@@ -90,6 +90,7 @@ class Compiler:
             self.__next()
             return self.__scan_if_statement(token)
         if token.get_type() == TokenType.OPEN_BRACE:
+            self.__pos -= 1
             return self.__scan_block_statement()
         return self.__scan_expression_statement()
 
@@ -117,7 +118,8 @@ class Compiler:
         next_token = self.__next_required("Expected expression after 'if'")
         expect_token(next_token, TokenType.OPEN_PARAM)
         test_expression = self.__scan_expression()
-        expect_token(self.__peek(offset=-1), TokenType.CLOSE_PARAM)
+        expect_token(self.__peek(), TokenType.CLOSE_PARAM)
+        self.__next()
         consequent = self.__scan_local_statement(self.__next())
         alternate = None
         if self.__peek().get_type() == TokenType.K_ELSE:

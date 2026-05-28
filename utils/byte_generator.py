@@ -17,7 +17,7 @@ from utils.models import (
     BinaryExpression,
     FunctionStatement,
     ExpressionStatement,
-    VariableDeclaration, Trace,
+    VariableDeclaration, Trace, IfStatement, Statement,
 )
 from utils.enums import StatementType, DataType, OpCodeType, TokenType
 
@@ -72,15 +72,31 @@ class ByteCodeGenerator:
     def __handle_block(self, stmt_type: StatementType, block: BlockStatement) -> None:
         self.stack_trace.push(stmt_type, block.get_line())
         for statement in block.body:
-            if statement.get_type() == StatementType.RETURN_STATEMENT:
-                self.__handle_return(cast(ReturnStatement, statement))
-            elif statement.get_type() == StatementType.VARIABLE_DECLARATION:
-                self.__handle_variable_declaration(cast(VariableDeclaration, statement))
-            elif statement.get_type() == StatementType.BLOCK_STATEMENT:
-                self.__handle_block(StatementType.BLOCK_STATEMENT, cast(BlockStatement, statement))
-            else:
-                self.__handle_expression(cast(ExpressionStatement, statement))
+            self.__handle_statement(statement)
         self.stack_trace.pop()
+
+    def __handle_statement(self, statement: Statement) -> None:
+        if statement.get_type() == StatementType.RETURN_STATEMENT:
+            self.__handle_return(cast(ReturnStatement, statement))
+        elif statement.get_type() == StatementType.VARIABLE_DECLARATION:
+            self.__handle_variable_declaration(cast(VariableDeclaration, statement))
+        elif statement.get_type() == StatementType.IF_STATEMENT:
+            self.__handle_if_statement(cast(IfStatement, statement))
+        elif statement.get_type() == StatementType.BLOCK_STATEMENT:
+            self.__handle_block(StatementType.BLOCK_STATEMENT, cast(BlockStatement, statement))
+        else:
+            self.__handle_expression(cast(ExpressionStatement, statement))
+
+    def __handle_if_statement(self, stmt: IfStatement) -> None:
+        self.__handle_expression(stmt.test)
+        condition_pointer = self.instructions.push_inst(OpCodeType.JUMP_IF_FALSE) - 1
+        self.__handle_statement(stmt.consequent)
+        self.instructions.update_inst(condition_pointer, self.instructions.get_count())
+        if stmt.alternate is not None:
+            else_pointer = self.instructions.push_inst(OpCodeType.JUMP) - 1
+            self.instructions.update_inst(condition_pointer, self.instructions.get_count())
+            self.__handle_statement(stmt.alternate)
+            self.instructions.update_inst(else_pointer, self.instructions.get_count())
 
     def __handle_variable_declaration(self, declaration: VariableDeclaration) -> None:
         name = declaration.name
@@ -183,6 +199,12 @@ class Instruction:
     def push_inst(self, opcode: OpCodeType, value: int=0) -> int:
         self.instructions.append((opcode, value))
         return self.get_count()
+
+    def update_inst(self, index: int, value: int=0) -> None:
+        if 0 > index > len(self.instructions) - 1:
+            raise LanmoSyntaxError(None, "Compiler faulted (error point: update_inst)")
+        og_inst = self.instructions[index]
+        self.instructions[index] = (og_inst[0], value)
 
 class StackTrace:
     def __init__(self) -> None:
