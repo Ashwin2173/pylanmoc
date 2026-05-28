@@ -59,6 +59,7 @@ class StatementType(Enum):
     UNARY_MINUS = auto()
     UNARY_BANG = auto()
 
+    BINARY_ASSIGN = auto()
     BINARY_OR = auto()
     BINARY_AND = auto()
     BINARY_EQUAL_EQUAL = auto()
