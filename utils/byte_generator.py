@@ -96,6 +96,8 @@ class ByteCodeGenerator:
             self.__handle_expression(bin_exp.left)
             self.__handle_expression(bin_exp.right)
             self.instructions.push_inst(OpCodeType.BIN_OP, BIN_OP_LOOKUP[exp.s_type])
+        elif exp.get_type() == StatementType.BINARY_ASSIGN:
+            self.__handle_assignment(cast(BinaryExpression, exp))
         elif exp.get_type() == StatementType.CALL_EXPRESSION:
             self.__handle_call_statement(cast(CallExpression, exp))
         elif exp.get_type() == StatementType.IDENTIFIER:
@@ -110,6 +112,14 @@ class ByteCodeGenerator:
             self.__push(DataType.NONE, cast(NullLiteral, exp).token)
         else:
             raise NotImplementedError(exp.get_type())
+
+    def __handle_assignment(self, expression: BinaryExpression) -> None:
+        self.__handle_expression(expression.right)
+        if expression.left.get_type() == StatementType.IDENTIFIER:
+            slot_id = self.stack_trace.get_variable(cast(Identifier, expression.left).token)
+            self.instructions.push_inst(OpCodeType.STORE, slot_id)
+        else:
+            raise NotImplementedError(expression.left.get_type())
 
     def __handle_call_statement(self, call_exp: CallExpression) -> None:
         self.__handle_expression(call_exp.callee)
