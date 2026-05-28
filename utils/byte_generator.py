@@ -26,6 +26,7 @@ class ByteCodeGenerator:
         self.program = program
 
         self.raw_symbols = dict()
+        self.global_scope = self.program.frame_names.union(BUILT_IN_METHODS)
         self.function_count = 0
 
         self.symbol_table = bytearray()
@@ -75,8 +76,11 @@ class ByteCodeGenerator:
                 self.__handle_return(cast(ReturnStatement, statement))
             elif statement.get_type() == StatementType.VARIABLE_DECLARATION:
                 self.__handle_variable_declaration(cast(VariableDeclaration, statement))
+            elif statement.get_type() == StatementType.BLOCK_STATEMENT:
+                self.__handle_block(StatementType.BLOCK_STATEMENT, cast(BlockStatement, statement))
             else:
                 self.__handle_expression(cast(ExpressionStatement, statement))
+        self.stack_trace.pop()
 
     def __handle_variable_declaration(self, declaration: VariableDeclaration) -> None:
         name = declaration.name
@@ -194,6 +198,8 @@ class StackTrace:
         self.stack.pop()
 
     def create_variable(self, token: Word) -> int:
+        if token.get_raw() in self.stack[-1].variables:
+            raise LanmoSyntaxError(token, f"Variable '{token.get_raw()}' is already declared in the scope")
         if len(self.available_slots) != 0:
             slot_id = self.available_slots.pop()
         else:
@@ -204,7 +210,7 @@ class StackTrace:
 
     def get_variable(self, token: Word) -> int:
         name = token.get_raw()
-        for stack_index in range(len(self.stack), 0, -1):
+        for stack_index in range(1, len(self.stack) + 1):
             stack_variables = self.stack[-stack_index].variables
             if name in stack_variables:
                 return stack_variables[name]

@@ -1,7 +1,4 @@
 function main() {
-    var name = null;
-    print(name);
-    name = "Ashwin";
-    print(name);
-    return null;
+
+    return ;
 }

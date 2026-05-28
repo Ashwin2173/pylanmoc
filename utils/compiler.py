@@ -101,8 +101,9 @@ class Compiler:
     def __scan_return_statement(self, token: Word) -> ReturnStatement:
         next_token = self.__peek()
         if next_token.get_type() == TokenType.SEMI_COLON:
+            self.__next()
             return ReturnStatement(
-                expression=None,
+                expression=NullLiteral(next_token, next_token.get_line()),
                 line=token.get_line()
             )
         expression = self.__scan_expression()
