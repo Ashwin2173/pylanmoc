@@ -91,7 +91,7 @@ class ByteCodeGenerator:
             self.instructions.push_inst(OpCodeType.POP)
 
     def __handle_while_statement(self, stmt: WhileStatement) -> None:
-        loop_pointer = self.instructions.get_count() - 1
+        loop_pointer = self.instructions.get_count()
         self.__handle_expression(stmt.test)
         condition_pointer = self.instructions.push_inst(OpCodeType.JUMP_IF_FALSE) - 1
         self.__handle_statement(stmt.body)
@@ -212,7 +212,7 @@ class Instruction:
         return self.get_count()
 
     def update_inst(self, index: int, value: int=0) -> None:
-        if 0 > index > len(self.instructions) - 1:
+        if index < 0 or index > len(self.instructions) - 1:
             raise LanmoSyntaxError(None, "Compiler faulted (error point: update_inst)")
         og_inst = self.instructions[index]
         self.instructions[index] = (og_inst[0], value)
