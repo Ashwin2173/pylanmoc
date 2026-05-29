@@ -15,6 +15,7 @@ from utils.models import (
     BooleanLiteral,
     IntegerLiteral,
     CallExpression,
+    IndexExpression,
     ReturnStatement,
     UnaryExpression,
     BinaryExpression,
@@ -262,14 +263,13 @@ class Compiler:
         return left
 
     def __scan_unary(self) -> ExpressionStatement:
-        if self.__match(TokenType.K_NOT, TokenType.MINUS, TokenType.PLUS):
+        if self.__match(TokenType.K_NOT, TokenType.MINUS):
             token = self.__next()
             right = self.__scan_unary()
             if token.get_type() == TokenType.K_NOT:
                 return UnaryExpression(right, StatementType.UNARY_BANG, token.get_line())
             if token.get_type() == TokenType.MINUS:
                 return UnaryExpression(right, StatementType.UNARY_MINUS, token.get_line())
-            return UnaryExpression(right, StatementType.UNARY_PLUS, token.get_line())
         return self.__scan_postfix()
 
     def __finish_call_expression(self, expr: ExpressionStatement) -> CallExpression:
@@ -291,11 +291,23 @@ class Compiler:
             line=token.get_line()
         )
 
+    def __finish_index_expression(self, expr: ExpressionStatement) -> IndexExpression:
+        token = self.__next_required("Expected '[' in IndexExpression")
+        index_expr = self.__scan_expression()
+        expect_token(self.__next(), TokenType.CLOSE_SQUARE)
+        return IndexExpression(
+            expression=expr,
+            index=index_expr,
+            line=token.get_line()
+        )
+
     def __scan_postfix(self) -> ExpressionStatement:
         expr = self.__scan_primary()
         while True:
             if self.__match(TokenType.OPEN_PARAM):
                 expr = self.__finish_call_expression(expr)
+            elif self.__match(TokenType.OPEN_SQUARE):
+                expr = self.__finish_index_expression(expr)
             else:
                 break
         return expr

@@ -64,6 +64,11 @@ BIN_OP_LOOKUP = {
     StatementType.BINARY_OR: 13
 }
 
+UNA_OP_LOOKUP = {
+    StatementType.UNARY_MINUS: 1,
+    StatementType.UNARY_BANG: 2
+}
+
 BUILT_IN_METHODS = {
     "print",
     "input",
