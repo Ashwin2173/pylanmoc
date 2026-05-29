@@ -1,0 +1,10 @@
+function main() {
+    var count = 0;
+    var start_time = now();
+    while (count <= 1000000) {
+        count = count + 1;
+    }
+    var end_time = now();
+    print(end_time - start_time);
+    return;
+}

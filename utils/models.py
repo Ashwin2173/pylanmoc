@@ -84,6 +84,11 @@ class BinaryExpression(ExpressionStatement):
         self.left = left
         self.right = right
 
+class SequenceExpression(ExpressionStatement):
+    def __init__(self, expressions: list[ExpressionStatement], line: int) -> None:
+        super().__init__(StatementType.SEQUENCE_EXPRESSION, line)
+        self.expressions = expressions
+
 class ReturnStatement(Statement):
     def __init__(self, expression: ExpressionStatement | None, line: int) -> None:
         super().__init__(StatementType.RETURN_STATEMENT, line)

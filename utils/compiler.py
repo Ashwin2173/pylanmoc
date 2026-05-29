@@ -19,6 +19,7 @@ from utils.models import (
     UnaryExpression,
     BinaryExpression,
     FunctionStatement,
+    SequenceExpression,
     ExpressionStatement,
     VariableDeclaration,
 )
@@ -82,16 +83,12 @@ class Compiler:
 
     def __scan_local_statement(self, token: Word) -> Statement:
         if token.get_type() == TokenType.K_RETURN:
-            self.__next()
             return self.__scan_return_statement(token)
         if token.get_type() == TokenType.K_VAR:
-            self.__next()
             return self.__scan_var_statement(token)
         if token.get_type() == TokenType.K_IF:
-            self.__next()
             return self.__scan_if_statement(token)
         if token.get_type() == TokenType.K_WHILE:
-            self.__next() # todo: fix this shit
             return self.__scan_while_statement(token)
         if token.get_type() == TokenType.OPEN_BRACE:
             self.__pos -= 1
@@ -104,6 +101,7 @@ class Compiler:
         return expression
 
     def __scan_return_statement(self, token: Word) -> ReturnStatement:
+        self.__next_required("Expected 'return' keyword for return statement")
         next_token = self.__peek()
         if next_token.get_type() == TokenType.SEMI_COLON:
             self.__next()
@@ -119,6 +117,7 @@ class Compiler:
         )
 
     def __scan_while_statement(self, token: Word) -> WhileStatement:
+        self.__next_required("Expected 'while' keyword for while statement")
         next_token = self.__next_required("Expected expression after 'while'")
         expect_token(next_token, TokenType.OPEN_PARAM)
         test_expression = self.__scan_expression()
@@ -132,6 +131,7 @@ class Compiler:
         )
 
     def __scan_if_statement(self, token: Word) -> IfStatement:
+        self.__next_required("Expected 'if' keyword for if statement")
         next_token = self.__next_required("Expected expression after 'if'")
         expect_token(next_token, TokenType.OPEN_PARAM)
         test_expression = self.__scan_expression()
@@ -150,6 +150,7 @@ class Compiler:
         )
 
     def __scan_var_statement(self, var_token: Word) -> VariableDeclaration:
+        self.__next_required("Expected 'var' keyword for assignment statement")
         name_token = self.__next_required("Expected variable name after 'var'")
         expect_token(name_token, TokenType.IDENTIFIER)
         assign_token = self.__next_required("Expected '=' after variable name")
@@ -160,6 +161,24 @@ class Compiler:
             name=name_token,
             initializer=initializer,
             line=var_token.get_line()
+        )
+
+    def __scan_list(self, token: Word) -> SequenceExpression:
+        expect_token(token, TokenType.OPEN_SQUARE)
+        expressions = list()
+        if self.__match(TokenType.CLOSE_SQUARE):
+            self.__next()
+        else:
+            while True:
+                expressions.append(self.__scan_expression())
+                if self.__peek().get_type() == TokenType.COMMA:
+                    self.__next()
+                    continue
+                expect_token(self.__next_required("Expected ']' after arguments"), TokenType.CLOSE_SQUARE)
+                break
+        return SequenceExpression(
+            expressions=expressions,
+            line=token.get_line()
         )
 
     def __scan_expression(self) -> ExpressionStatement:
@@ -295,6 +314,8 @@ class Compiler:
             return NullLiteral(token, line)
         if token_type == TokenType.K_TRUE or token_type == TokenType.K_FALSE:
             return BooleanLiteral(token, line)
+        if token_type == TokenType.OPEN_SQUARE:
+            return self.__scan_list(token)
         if token_type == TokenType.IDENTIFIER:
             return self.__scan_identifier(token, line)
         print(f"[ LOG ] {token}")

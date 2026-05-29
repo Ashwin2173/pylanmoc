@@ -15,6 +15,8 @@ TOKEN_GRAMMAR = r"""
 | (?P<CLOSE_BRACE>\})                                     # close brace operator
 | (?P<OPEN_PARAM>\()                                      # open param operator
 | (?P<CLOSE_PARAM>\))                                     # close param operator
+| (?P<OPEN_SQUARE>\[)                                     # open square operator
+| (?P<CLOSE_SQUARE>\])                                    # close square operator
 | (?P<SEMI_COLON>\;)                                      # semicolon operator
 | (?P<K_TRUE>\btrue\b)                                    # boolean true
 | (?P<K_FALSE>\bfalse\b)                                  # boolean false

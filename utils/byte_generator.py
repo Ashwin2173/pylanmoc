@@ -5,19 +5,24 @@ from utils.constants import BIN_OP_LOOKUP, MAGIC, MAJOR_VERSION, MINOR_VERSION, 
 from utils.exceptions import LanmoSyntaxError
 from utils.models import (
     Word,
+    Trace,
     Program,
+    Statement,
     Identifier,
     NullLiteral,
+    IfStatement,
     StringLiteral,
     BooleanLiteral,
     IntegerLiteral,
+    WhileStatement,
     CallExpression,
     BlockStatement,
     ReturnStatement,
     BinaryExpression,
     FunctionStatement,
     ExpressionStatement,
-    VariableDeclaration, Trace, IfStatement, Statement, WhileStatement,
+    VariableDeclaration,
+    SequenceExpression,
 )
 from utils.enums import StatementType, DataType, OpCodeType, TokenType
 
@@ -133,6 +138,8 @@ class ByteCodeGenerator:
             self.__handle_call_statement(cast(CallExpression, exp))
         elif exp.get_type() == StatementType.IDENTIFIER:
             self.__handle_identifier(cast(Identifier, exp))
+        elif exp.get_type() == StatementType.SEQUENCE_EXPRESSION:
+            self.__handle_sequence(cast(SequenceExpression, exp))
         elif exp.get_type() == StatementType.BOOLEAN:
             self.__push(DataType.BOOLEAN, cast(BooleanLiteral, exp).token)
         elif exp.get_type() == StatementType.INTEGER:
@@ -157,6 +164,11 @@ class ByteCodeGenerator:
         for argument in call_exp.arguments:
             self.__handle_expression(argument)
         self.instructions.push_inst(OpCodeType.CALL, len(call_exp.arguments))
+
+    def __handle_sequence(self, sequence_expression: SequenceExpression) -> None:
+        for elements in sequence_expression.expressions:
+            self.__handle_expression(elements)
+        self.instructions.push_inst(OpCodeType.MAKE_LIST, len(sequence_expression.expressions))
 
     def __handle_identifier(self, identifier: Identifier) -> None:
         if self.__is_function(identifier.token):
