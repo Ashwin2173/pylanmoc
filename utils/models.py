@@ -43,6 +43,12 @@ class CallExpression(ExpressionStatement):
         self.callee = callee
         self.arguments = arguments
 
+class IndexExpression(ExpressionStatement):
+    def __init__(self, expression: ExpressionStatement, index: ExpressionStatement, line: int):
+        super().__init__(StatementType.INDEX_EXPRESSION, line)
+        self.expression = expression
+        self.index = index
+
 class IntegerLiteral(ExpressionStatement):
     def __init__(self, token: Word, line: int):
         super().__init__(StatementType.INTEGER, line)
@@ -83,6 +89,11 @@ class BinaryExpression(ExpressionStatement):
         super().__init__(s_type, line)
         self.left = left
         self.right = right
+
+class SequenceExpression(ExpressionStatement):
+    def __init__(self, expressions: list[ExpressionStatement], line: int) -> None:
+        super().__init__(StatementType.SEQUENCE_EXPRESSION, line)
+        self.expressions = expressions
 
 class ReturnStatement(Statement):
     def __init__(self, expression: ExpressionStatement | None, line: int) -> None:

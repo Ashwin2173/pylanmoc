@@ -1,25 +1,43 @@
 import struct
 from typing import cast
 
-from utils.constants import BIN_OP_LOOKUP, MAGIC, MAJOR_VERSION, MINOR_VERSION, BUILT_IN_METHODS
-from utils.exceptions import LanmoSyntaxError
+from utils.constants import (
+    MAGIC,
+    MAJOR_VERSION,
+    MINOR_VERSION,
+    UNA_OP_LOOKUP,
+    BIN_OP_LOOKUP,
+    BUILT_IN_METHODS
+)
 from utils.models import (
     Word,
+    Trace,
     Program,
+    Statement,
     Identifier,
     NullLiteral,
+    IfStatement,
     StringLiteral,
     BooleanLiteral,
     IntegerLiteral,
+    WhileStatement,
     CallExpression,
     BlockStatement,
     ReturnStatement,
+    IndexExpression,
     BinaryExpression,
     FunctionStatement,
     ExpressionStatement,
-    VariableDeclaration, Trace, IfStatement, Statement, WhileStatement,
+    VariableDeclaration,
+    SequenceExpression, UnaryExpression
 )
-from utils.enums import StatementType, DataType, OpCodeType, TokenType
+from utils.enums import (
+    DataType,
+    TokenType,
+    OpCodeType,
+    StatementType
+)
+from utils.exceptions import LanmoSyntaxError
 
 class ByteCodeGenerator:
     def __init__(self, program: Program) -> None:
@@ -116,47 +134,71 @@ class ByteCodeGenerator:
         self.__handle_expression(declaration.initializer)
         slot_id = self.stack_trace.create_variable(declaration.name)
         self.instructions.push_inst(OpCodeType.STORE, slot_id)
+        self.instructions.push_inst(OpCodeType.POP)
 
     def __handle_return(self, return_stmt: ReturnStatement) -> None:
         self.__handle_expression(return_stmt.expression)
         self.instructions.push_inst(OpCodeType.RETURN, 0)
 
-    def __handle_expression(self, exp: ExpressionStatement) -> None:
-        if exp.get_type() in BIN_OP_LOOKUP:
-            bin_exp: BinaryExpression = cast(BinaryExpression, exp)
+    def __handle_expression(self, expr: ExpressionStatement) -> None:
+        if expr.get_type() in BIN_OP_LOOKUP:
+            bin_exp: BinaryExpression = cast(BinaryExpression, expr)
             self.__handle_expression(bin_exp.left)
             self.__handle_expression(bin_exp.right)
-            self.instructions.push_inst(OpCodeType.BIN_OP, BIN_OP_LOOKUP[exp.s_type])
-        elif exp.get_type() == StatementType.BINARY_ASSIGN:
-            self.__handle_assignment(cast(BinaryExpression, exp))
-        elif exp.get_type() == StatementType.CALL_EXPRESSION:
-            self.__handle_call_statement(cast(CallExpression, exp))
-        elif exp.get_type() == StatementType.IDENTIFIER:
-            self.__handle_identifier(cast(Identifier, exp))
-        elif exp.get_type() == StatementType.BOOLEAN:
-            self.__push(DataType.BOOLEAN, cast(BooleanLiteral, exp).token)
-        elif exp.get_type() == StatementType.INTEGER:
-            self.__push(DataType.INTEGER, cast(IntegerLiteral, exp).token)
-        elif exp.get_type() == StatementType.STRING:
-            self.__push(DataType.STRING, cast(StringLiteral, exp).token)
-        elif exp.get_type() == StatementType.NULL:
-            self.__push(DataType.NONE, cast(NullLiteral, exp).token)
+            self.instructions.push_inst(OpCodeType.BIN_OP, BIN_OP_LOOKUP[expr.s_type])
+        elif expr.get_type() in UNA_OP_LOOKUP:
+            self.__handle_expression(cast(UnaryExpression, expr).value)
+            self.instructions.push_inst(OpCodeType.UNARY_OP, UNA_OP_LOOKUP[expr.s_type])
+        elif expr.get_type() == StatementType.BINARY_ASSIGN:
+            self.__handle_assignment(cast(BinaryExpression, expr))
+        elif expr.get_type() == StatementType.CALL_EXPRESSION:
+            self.__handle_call_statement(cast(CallExpression, expr))
+        elif expr.get_type() == StatementType.INDEX_EXPRESSION:
+            self.__handle_index_statement(cast(IndexExpression, expr))
+        elif expr.get_type() == StatementType.IDENTIFIER:
+            self.__handle_identifier(cast(Identifier, expr))
+        elif expr.get_type() == StatementType.SEQUENCE_EXPRESSION:
+            self.__handle_sequence(cast(SequenceExpression, expr))
+        elif expr.get_type() == StatementType.BOOLEAN:
+            self.__push(DataType.BOOLEAN, cast(BooleanLiteral, expr).token)
+        elif expr.get_type() == StatementType.INTEGER:
+            self.__push(DataType.INTEGER, cast(IntegerLiteral, expr).token)
+        elif expr.get_type() == StatementType.STRING:
+            self.__push(DataType.STRING, cast(StringLiteral, expr).token)
+        elif expr.get_type() == StatementType.NULL:
+            self.__push(DataType.NONE, cast(NullLiteral, expr).token)
         else:
-            raise NotImplementedError(exp.get_type())
+            raise NotImplementedError(expr.get_type())
 
     def __handle_assignment(self, expression: BinaryExpression) -> None:
-        self.__handle_expression(expression.right)
         if expression.left.get_type() == StatementType.IDENTIFIER:
+            self.__handle_expression(expression.right)
             slot_id = self.stack_trace.get_variable(cast(Identifier, expression.left).token)
             self.instructions.push_inst(OpCodeType.STORE, slot_id)
+        elif expression.left.get_type() == StatementType.INDEX_EXPRESSION:
+            index_expr = cast(IndexExpression, expression.left)
+            self.__handle_expression(index_expr.expression)
+            self.__handle_expression(expression.right)
+            self.__handle_expression(index_expr.index)
+            self.instructions.push_inst(OpCodeType.SET_INDEX)
         else:
             raise NotImplementedError(expression.left.get_type())
 
-    def __handle_call_statement(self, call_exp: CallExpression) -> None:
-        self.__handle_expression(call_exp.callee)
-        for argument in call_exp.arguments:
+    def __handle_call_statement(self, call_expr: CallExpression) -> None:
+        self.__handle_expression(call_expr.callee)
+        for argument in call_expr.arguments:
             self.__handle_expression(argument)
-        self.instructions.push_inst(OpCodeType.CALL, len(call_exp.arguments))
+        self.instructions.push_inst(OpCodeType.CALL, len(call_expr.arguments))
+
+    def __handle_index_statement(self, index_expr: IndexExpression) -> None:
+        self.__handle_expression(index_expr.expression)
+        self.__handle_expression(index_expr.index)
+        self.instructions.push_inst(OpCodeType.GET_INDEX)
+
+    def __handle_sequence(self, sequence_expression: SequenceExpression) -> None:
+        for elements in sequence_expression.expressions:
+            self.__handle_expression(elements)
+        self.instructions.push_inst(OpCodeType.MAKE_LIST, len(sequence_expression.expressions))
 
     def __handle_identifier(self, identifier: Identifier) -> None:
         if self.__is_function(identifier.token):

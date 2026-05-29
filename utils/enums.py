@@ -8,6 +8,8 @@ class TokenType(Enum):
     CLOSE_BRACE = "CLOSE_BRACE"
     OPEN_PARAM = "OPEN_PARAM"
     CLOSE_PARAM = "CLOSE_PARAM"
+    OPEN_SQUARE = "OPEN_SQUARE"
+    CLOSE_SQUARE = "CLOSE_SQUARE"
     COMMA = "COMMA"
     SEMI_COLON = "SEMI_COLON"
 
@@ -56,7 +58,6 @@ class StatementType(Enum):
     BOOLEAN = auto()
     NULL = auto()
 
-    UNARY_PLUS = auto()
     UNARY_MINUS = auto()
     UNARY_BANG = auto()
 
@@ -73,7 +74,10 @@ class StatementType(Enum):
     BINARY_SUB = auto()
     BINARY_MUL = auto()
     BINARY_DIV = auto()
+
     CALL_EXPRESSION = auto()
+    INDEX_EXPRESSION = auto()
+    SEQUENCE_EXPRESSION = auto()
 
     VARIABLE_DECLARATION = auto()
     ASSIGNMENT_STATEMENT = auto()
