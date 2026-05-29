@@ -1,5 +1,7 @@
 function main() {
     var list = [1, 2, 3, "Ashwin"];
+    print(list);
+    list[-1] = 4;
     var index = 1;
     while (index <= len(list)) {
         print(list[-index]);
