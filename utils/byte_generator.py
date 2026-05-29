@@ -171,10 +171,16 @@ class ByteCodeGenerator:
             raise NotImplementedError(expr.get_type())
 
     def __handle_assignment(self, expression: BinaryExpression) -> None:
-        self.__handle_expression(expression.right)
         if expression.left.get_type() == StatementType.IDENTIFIER:
+            self.__handle_expression(expression.right)
             slot_id = self.stack_trace.get_variable(cast(Identifier, expression.left).token)
             self.instructions.push_inst(OpCodeType.STORE, slot_id)
+        elif expression.left.get_type() == StatementType.INDEX_EXPRESSION:
+            index_expr = cast(IndexExpression, expression.left)
+            self.__handle_expression(index_expr.expression)
+            self.__handle_expression(expression.right)
+            self.__handle_expression(index_expr.index)
+            self.instructions.push_inst(OpCodeType.SET_INDEX)
         else:
             raise NotImplementedError(expression.left.get_type())
 

@@ -326,6 +326,10 @@ class Compiler:
             return NullLiteral(token, line)
         if token_type == TokenType.K_TRUE or token_type == TokenType.K_FALSE:
             return BooleanLiteral(token, line)
+        if token_type == TokenType.OPEN_PARAM:
+            expr = self.__scan_expression()
+            expect_token(self.__next(), TokenType.CLOSE_PARAM)
+            return expr
         if token_type == TokenType.OPEN_SQUARE:
             return self.__scan_list(token)
         if token_type == TokenType.IDENTIFIER:
@@ -378,4 +382,4 @@ def expect_token(token: Word, token_type: TokenType) -> None:
         raise LanmoSyntaxError(token, f"Expected {token_type.name}, but got {token.get_type().value}")
 
 def is_assignable(expr: ExpressionStatement) -> bool:
-    return expr.get_type() in { StatementType.IDENTIFIER }
+    return expr.get_type() in { StatementType.IDENTIFIER , StatementType.INDEX_EXPRESSION }
