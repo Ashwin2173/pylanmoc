@@ -78,17 +78,25 @@ class ByteCodeGenerator:
         self.stack_trace = StackTrace()
 
         index = self.__add_constant(DataType.FUNCTION, function.name)
-        self.__handle_block(StatementType.FUNCTION_DEFINITION, function.body)
+        self.__handle_block(StatementType.FUNCTION_DEFINITION, function.body, function.arguments)
         frame = bytearray()
         frame += struct.pack("<H", index)
+        frame += struct.pack("<B", len(function.arguments))
         frame += struct.pack("<I", self.stack_trace.slot_size)
         frame += struct.pack("<H", 255)
         frame += struct.pack("<I", self.instructions.get_count())
         frame += self.instructions.get_raw()
         self.program_code += frame
 
-    def __handle_block(self, stmt_type: StatementType, block: BlockStatement) -> None:
+    def __handle_function_arguments(self, arguments: list[Identifier]) -> None:
+        for argument in arguments:
+            slot_id = self.stack_trace.create_variable(argument.token)
+            self.instructions.push_inst(OpCodeType.STORE, slot_id)
+
+    def __handle_block(self, stmt_type: StatementType, block: BlockStatement, arguments: list[Identifier]=None) -> None:
         self.stack_trace.push(stmt_type, block.get_line())
+        if arguments is not None:
+            self.__handle_function_arguments(arguments)
         for statement in block.body:
             self.__handle_statement(statement)
         self.stack_trace.pop()

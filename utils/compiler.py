@@ -61,9 +61,22 @@ class Compiler:
         name = self.__next_required("Expected function name after 'function'")
         self.frame_names.add(name.get_raw())
         expect_token(self.__next_required("Expected '(' after function name"), TokenType.OPEN_PARAM)
-        expect_token(self.__next_required("Expected ')' after function parameters"), TokenType.CLOSE_PARAM)
+        arguments = list()
+        if self.__match(TokenType.CLOSE_PARAM):
+            self.__next()
+        else:
+            while True:
+                token = self.__peek()
+                arguments.append(self.__scan_identifier(token, token.get_line()))
+                if self.__peek().get_type() == TokenType.COMMA:
+                    self.__next()
+                    continue
+                self.__next()
+                expect_token(self.__next_required("Expected ')' after function parameters"), TokenType.CLOSE_PARAM)
+                break
         return FunctionStatement(
             name=name,
+            arguments=arguments,
             body=self.__scan_block_statement(),
             line=name.get_line()
         )
@@ -374,7 +387,8 @@ class Compiler:
 
     def __next_required(self, message: str) -> Word:
         if self.__pos >= len(self.__tokens):
-            raise LanmoSyntaxError(None, message)
+            token = None if len(self.__tokens) > 0 else self.__tokens[-1]
+            raise LanmoSyntaxError(token, message)
         return self.__next()
 
 def expect_token(token: Word, token_type: TokenType) -> None:

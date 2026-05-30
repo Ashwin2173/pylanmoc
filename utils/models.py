@@ -125,9 +125,10 @@ class IfStatement(Statement):
         self.alternate = alternate
 
 class FunctionStatement(Statement):
-    def __init__(self, name: Word, body: BlockStatement, line: int) -> None:
+    def __init__(self, name: Word, arguments: list[Identifier], body: BlockStatement, line: int) -> None:
         super().__init__(StatementType.FUNCTION_DEFINITION, line)
         self.name = name
+        self.arguments = arguments
         self.body = body
 
 class Program:

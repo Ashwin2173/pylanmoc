@@ -1,0 +1,9 @@
+function main() {
+    print_name("Ashwin", );
+    return;
+}
+
+function print_name(name) {
+    print("My name is", name);
+    return;
+}
