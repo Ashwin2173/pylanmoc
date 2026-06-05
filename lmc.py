@@ -6,7 +6,7 @@ from utils.constants import FILE_EXTENSION, MINOR_VERSION, MAJOR_VERSION, COMPIL
 
 def print_help() -> None:
     print("USAGE:")
-    print("    lanmo [PROGRAM_PATH] [OPTIONS]")
+    print("    lmc [PROGRAM_PATH] [OPTIONS]")
     print(f"PROGRAM_PATH:    <lm_file>{FILE_EXTENSION}")
     print("OPTIONS:")
     print("    --version    version of the lmc")
