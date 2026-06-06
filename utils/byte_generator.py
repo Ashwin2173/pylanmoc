@@ -25,11 +25,13 @@ from utils.models import (
     BlockStatement,
     ReturnStatement,
     IndexExpression,
+    UnaryExpression,
+    StructStatement,
     BinaryExpression,
     FunctionStatement,
     ExpressionStatement,
     VariableDeclaration,
-    SequenceExpression, UnaryExpression
+    SequenceExpression, StructLiteral, MemberExpression
 )
 from utils.enums import (
     DataType,
@@ -44,10 +46,11 @@ class ByteCodeGenerator:
         self.program = program
 
         self.raw_symbols = dict()
+        self.struct_lookup = dict()
         self.global_scope = self.program.frame_names.union(BUILT_IN_METHODS)
-        self.function_count = 0
 
         self.symbol_table = bytearray()
+        self.struct_table = bytearray()
         self.program_code = bytearray()
 
         self.instructions: Instruction | None = None
@@ -61,19 +64,29 @@ class ByteCodeGenerator:
         bc += struct.pack("<IHH", MAGIC, MAJOR_VERSION, MINOR_VERSION)
         bc += struct.pack("<H", len(self.raw_symbols))
         bc += self.symbol_table
-        bc += struct.pack("<H", self.function_count)
+        bc += struct.pack("<H", len(self.program.structs))
+        bc += self.struct_table
+        bc += struct.pack("<H", len(self.program.functions))
         bc += self.program_code
         return bc
 
     def __handle_global_statements(self) -> None:
-        for item in self.program.get_body():
-            if item.get_type() == StatementType.FUNCTION_DEFINITION:
-                self.__handle_function(cast(FunctionStatement, item))
-            else:
-                raise NotImplementedError(item.get_type())
+        for st in self.program.structs:
+            self.__handle_struct(st)
+        for function in self.program.functions:
+            self.__handle_function(function)
+
+    def __handle_struct(self, st: StructStatement) -> None:
+        self.struct_table += struct.pack("<B", len(st.fields))
+        fields = dict()
+        for index, field in enumerate(st.fields):
+            fields[field.token.get_raw()] = index
+            index = self.__add_constant(DataType.VARIABLE, field.token)
+            self.struct_table += struct.pack("<H", index)
+        st.fields = fields
+        self.struct_lookup[st.name.get_raw()] = st
 
     def __handle_function(self, function: FunctionStatement) -> None:
-        self.function_count += 1
         self.instructions = Instruction()
         self.stack_trace = StackTrace()
 
@@ -89,9 +102,10 @@ class ByteCodeGenerator:
         self.program_code += frame
 
     def __handle_function_arguments(self, arguments: list[Identifier]) -> None:
-        for argument in arguments:
+        for argument in arguments[::-1]:
             slot_id = self.stack_trace.create_variable(argument.token)
             self.instructions.push_inst(OpCodeType.STORE, slot_id)
+            self.instructions.push_inst(OpCodeType.POP)
 
     def __handle_block(self, stmt_type: StatementType, block: BlockStatement, arguments: list[Identifier]=None) -> None:
         self.stack_trace.push(stmt_type, block.get_line())
@@ -148,6 +162,14 @@ class ByteCodeGenerator:
         self.__handle_expression(return_stmt.expression)
         self.instructions.push_inst(OpCodeType.RETURN, 0)
 
+    def __handle_struct_literal(self, literal: StructLiteral) -> None:
+        struct_info: StructStatement = self.struct_lookup[literal.name.token.get_raw()]
+        self.instructions.push_inst(OpCodeType.NEW_OBJ, struct_info.struct_id)
+        for name, expression in literal.init_expr.items():
+            self.__handle_expression(expression)
+            name_index = self.__add_constant(DataType.VARIABLE, name.token)
+            self.instructions.push_inst(OpCodeType.SET_FIELD, name_index)
+
     def __handle_expression(self, expr: ExpressionStatement) -> None:
         if expr.get_type() in BIN_OP_LOOKUP:
             bin_exp: BinaryExpression = cast(BinaryExpression, expr)
@@ -163,6 +185,8 @@ class ByteCodeGenerator:
             self.__handle_call_statement(cast(CallExpression, expr))
         elif expr.get_type() == StatementType.INDEX_EXPRESSION:
             self.__handle_index_statement(cast(IndexExpression, expr))
+        elif expr.get_type() == StatementType.MEMBER_EXPRESSION:
+            self.__handle_member_statement(cast(MemberExpression, expr))
         elif expr.get_type() == StatementType.IDENTIFIER:
             self.__handle_identifier(cast(Identifier, expr))
         elif expr.get_type() == StatementType.SEQUENCE_EXPRESSION:
@@ -175,6 +199,8 @@ class ByteCodeGenerator:
             self.__push(DataType.STRING, cast(StringLiteral, expr).token)
         elif expr.get_type() == StatementType.NULL:
             self.__push(DataType.NONE, cast(NullLiteral, expr).token)
+        elif expr.get_type() == StatementType.STRUCT:
+            self.__handle_struct_literal(cast(StructLiteral, expr))
         else:
             raise NotImplementedError(expr.get_type())
 
@@ -189,6 +215,12 @@ class ByteCodeGenerator:
             self.__handle_expression(expression.right)
             self.__handle_expression(index_expr.index)
             self.instructions.push_inst(OpCodeType.SET_INDEX)
+        elif expression.left.get_type() == StatementType.MEMBER_EXPRESSION:
+            member_expr = cast(MemberExpression, expression.left)
+            self.__handle_expression(member_expr.parent)
+            self.__handle_expression(expression.right)
+            name_index = self.__add_constant(DataType.VARIABLE, member_expr.child)
+            self.instructions.push_inst(OpCodeType.SET_FIELD, name_index)
         else:
             raise NotImplementedError(expression.left.get_type())
 
@@ -197,6 +229,11 @@ class ByteCodeGenerator:
         for argument in call_expr.arguments:
             self.__handle_expression(argument)
         self.instructions.push_inst(OpCodeType.CALL, len(call_expr.arguments))
+
+    def __handle_member_statement(self, expr: MemberExpression) -> None:
+        self.__handle_expression(expr.parent)
+        child_index = self.__add_constant(DataType.VARIABLE, expr.child)
+        self.instructions.push_inst(OpCodeType.GET_FIELD, child_index)
 
     def __handle_index_statement(self, index_expr: IndexExpression) -> None:
         self.__handle_expression(index_expr.expression)

@@ -49,6 +49,12 @@ class IndexExpression(ExpressionStatement):
         self.expression = expression
         self.index = index
 
+class MemberExpression(ExpressionStatement):
+    def __init__(self, parent: ExpressionStatement, child: Word, line: int):
+        super().__init__(StatementType.MEMBER_EXPRESSION, line)
+        self.parent = parent
+        self.child = child
+
 class IntegerLiteral(ExpressionStatement):
     def __init__(self, token: Word, line: int):
         super().__init__(StatementType.INTEGER, line)
@@ -124,6 +130,19 @@ class IfStatement(Statement):
         self.consequent = consequent
         self.alternate = alternate
 
+class StructStatement(Statement):
+    def __init__(self, name: Word, s_id: int, fields: list[Identifier], line: int) -> None:
+        super().__init__(StatementType.STRUCT_DEFINITION, line)
+        self.name = name
+        self.struct_id = s_id
+        self.fields = fields
+
+class StructLiteral(ExpressionStatement):
+    def __init__(self, name: Identifier, init_expressions: dict[Identifier, ExpressionStatement], line: int) -> None:
+        super().__init__(StatementType.STRUCT, line)
+        self.name = name
+        self.init_expr = init_expressions
+
 class FunctionStatement(Statement):
     def __init__(self, name: Word, arguments: list[Identifier], body: BlockStatement, line: int) -> None:
         super().__init__(StatementType.FUNCTION_DEFINITION, line)
@@ -132,12 +151,10 @@ class FunctionStatement(Statement):
         self.body = body
 
 class Program:
-    def __init__(self, body: list[Statement], frame_names: set[str]) -> None:
-        self.body = body
+    def __init__(self, functions: list[FunctionStatement], structs: list[StructStatement], frame_names: set[str]) -> None:
+        self.functions = functions
+        self.structs = structs
         self.frame_names = frame_names
-
-    def get_body(self) -> list[Statement]:
-        return self.body
 
 class Trace:
     def __init__(self, context: StatementType, line: int) -> None:

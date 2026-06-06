@@ -9,6 +9,7 @@ from utils.models import (
     IfStatement,
     NullLiteral,
     FloatLiteral,
+    StructLiteral,
     StringLiteral,
     BlockStatement,
     WhileStatement,
@@ -17,8 +18,10 @@ from utils.models import (
     CallExpression,
     IndexExpression,
     ReturnStatement,
+    StructStatement,
     UnaryExpression,
     BinaryExpression,
+    MemberExpression,
     FunctionStatement,
     SequenceExpression,
     ExpressionStatement,
@@ -33,6 +36,7 @@ class Compiler:
     def __init__(self, source: str) -> None:
         self.source = source
         self.__tokens: list[Word] = self.__tokenize()
+        self.struct_names = set()
         self.frame_names = set()
         self.__pos: int = 0
 
@@ -42,25 +46,59 @@ class Compiler:
         return bg.pack_byte_code()
 
     def __scan_program(self) -> Program:
-        body = self.__scan_global_statements()
-        return Program(body=body, frame_names=self.frame_names)
-
-    def __scan_global_statements(self) -> list[Statement]:
-        global_statements: list[Statement] = list()
+        functions: list[FunctionStatement] = list()
+        structs: list[StructStatement] = list()
         while True:
             token = self.__peek()
             if token.get_type() == TokenType.K_EOF:
-                return global_statements
+                break
             if token.get_type() == TokenType.K_FUNCTION:
                 self.__next()
-                global_statements.append(self.__scan_function_definition())
+                functions.append(self.__scan_function_definition())
+            elif token.get_type() == TokenType.K_STRUCT:
+                self.__next()
+                structs.append(self.__scan_struct_definition())
             else:
                 raise LanmoSyntaxError(token, "Invalid Syntax")
+        return Program(functions=functions, structs=structs, frame_names=self.frame_names)
+
+    def __scan_struct_definition(self) -> StructStatement:
+        name = self.__next_required("Expected struct name after 'struct'")
+        self.struct_names.add(name.get_raw())
+        expect_token(self.__next_required("Expected '{' after struct name"), TokenType.OPEN_BRACE)
+        fields = list()
+        if self.__match(TokenType.CLOSE_BRACE):
+            self.__next()
+        else:
+            while True:
+                token = self.__peek()
+                fields.append(self.__scan_identifier(token, token.get_line()))
+                self.__next_required("Expected '}' or ',' in function definition")
+                if self.__peek().get_type() == TokenType.COMMA:
+                    self.__next()
+                    continue
+                expect_token(self.__next(), TokenType.CLOSE_BRACE)
+                break
+        return StructStatement(
+            name=name,
+            s_id=len(self.struct_names)-1,
+            fields=fields,
+            line=name.get_line()
+        )
 
     def __scan_function_definition(self) -> FunctionStatement:
         name = self.__next_required("Expected function name after 'function'")
         self.frame_names.add(name.get_raw())
         expect_token(self.__next_required("Expected '(' after function name"), TokenType.OPEN_PARAM)
+        arguments = self.__scan_function_arguments()
+        return FunctionStatement(
+            name=name,
+            arguments=arguments,
+            body=self.__scan_block_statement(),
+            line=name.get_line()
+        )
+
+    def __scan_function_arguments(self) -> list[Identifier]:
         arguments = list()
         if self.__match(TokenType.CLOSE_PARAM):
             self.__next()
@@ -68,18 +106,13 @@ class Compiler:
             while True:
                 token = self.__peek()
                 arguments.append(self.__scan_identifier(token, token.get_line()))
+                self.__next_required("Expected ')' or ',' in function definition")
                 if self.__peek().get_type() == TokenType.COMMA:
                     self.__next()
                     continue
-                self.__next()
-                expect_token(self.__next_required("Expected ')' after function parameters"), TokenType.CLOSE_PARAM)
+                expect_token(self.__next(), TokenType.CLOSE_PARAM)
                 break
-        return FunctionStatement(
-            name=name,
-            arguments=arguments,
-            body=self.__scan_block_statement(),
-            line=name.get_line()
-        )
+        return arguments
 
     def __scan_block_statement(self) -> BlockStatement:
         open_brace = self.__next_required("Expected '{' at start of block")
@@ -314,6 +347,16 @@ class Compiler:
             line=token.get_line()
         )
 
+    def __finish_member_expression(self, left: ExpressionStatement) -> MemberExpression:
+        expect_token(self.__next_required("Expected '.'"), TokenType.DOT)
+        token = self.__next()
+        expect_token(token, TokenType.IDENTIFIER)
+        return MemberExpression(
+            parent=left,
+            child=token,
+            line=left.get_line()
+        )
+
     def __scan_postfix(self) -> ExpressionStatement:
         expr = self.__scan_primary()
         while True:
@@ -321,6 +364,8 @@ class Compiler:
                 expr = self.__finish_call_expression(expr)
             elif self.__match(TokenType.OPEN_SQUARE):
                 expr = self.__finish_index_expression(expr)
+            elif self.__match(TokenType.DOT):
+                expr = self.__finish_member_expression(expr)
             else:
                 break
         return expr
@@ -346,7 +391,10 @@ class Compiler:
         if token_type == TokenType.OPEN_SQUARE:
             return self.__scan_list(token)
         if token_type == TokenType.IDENTIFIER:
-            return self.__scan_identifier(token, line)
+            identifier = self.__scan_identifier(token, line)
+            if identifier.token.get_raw() in self.struct_names:
+                return self.__scan_struct_object(identifier)
+            return identifier
         print(f"[ LOG ] {token}")
         raise LanmoSyntaxError(token, "Invalid Syntax")
 
@@ -354,6 +402,30 @@ class Compiler:
         if token.get_raw() in BUILT_IN_METHODS:
             self.frame_names.add(token.get_raw())
         return Identifier(token, line)
+
+    def __scan_struct_object(self, name: Identifier) -> StructLiteral:
+        expect_token(self.__next_required("Expected '{' for object creation"), TokenType.OPEN_BRACE)
+        expressions = dict()
+        if self.__match(TokenType.CLOSE_BRACE):
+            self.__next()
+        else:
+            while True:
+                token = self.__peek()
+                field_name = self.__scan_identifier(token, token.get_line())
+                self.__next()
+                expect_token(self.__next_required("Expected '='"), TokenType.ASSIGN)
+                expression = self.__scan_expression()
+                expressions[field_name] = expression
+                if self.__peek().get_type() == TokenType.COMMA:
+                    self.__next()
+                    continue
+                expect_token(self.__next(), TokenType.CLOSE_BRACE)
+                break
+        return StructLiteral(
+            name=name,
+            init_expressions=expressions,
+            line=name.get_line()
+        )
 
     def __match(self, *types: TokenType) -> bool:
         return self.__peek().get_type() in types
@@ -396,4 +468,4 @@ def expect_token(token: Word, token_type: TokenType) -> None:
         raise LanmoSyntaxError(token, f"Expected {token_type.name}, but got {token.get_type().value}")
 
 def is_assignable(expr: ExpressionStatement) -> bool:
-    return expr.get_type() in { StatementType.IDENTIFIER , StatementType.INDEX_EXPRESSION }
+    return expr.get_type() in { StatementType.IDENTIFIER , StatementType.INDEX_EXPRESSION, StatementType.MEMBER_EXPRESSION }

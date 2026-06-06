@@ -1,0 +1,14 @@
+struct Point { x, y }
+
+function main() {
+    var point = Point {
+        x = Point {
+            x = 10,
+            y = 20
+        },
+        y = 30
+    };
+    point.x = 100;
+    print(point.x, point.x, point.y);
+    return;
+}
