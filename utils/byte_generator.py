@@ -17,6 +17,7 @@ from utils.models import (
     Identifier,
     NullLiteral,
     IfStatement,
+    StructLiteral,
     StringLiteral,
     BooleanLiteral,
     IntegerLiteral,
@@ -28,10 +29,11 @@ from utils.models import (
     UnaryExpression,
     StructStatement,
     BinaryExpression,
+    MemberExpression,
     FunctionStatement,
+    SequenceExpression,
     ExpressionStatement,
     VariableDeclaration,
-    SequenceExpression, StructLiteral, MemberExpression
 )
 from utils.enums import (
     DataType,
@@ -78,13 +80,10 @@ class ByteCodeGenerator:
 
     def __handle_struct(self, st: StructStatement) -> None:
         self.struct_table += struct.pack("<B", len(st.fields))
-        fields = dict()
         for index, field in enumerate(st.fields):
-            fields[field.token.get_raw()] = index
             index = self.__add_constant(DataType.VARIABLE, field.token)
             self.struct_table += struct.pack("<H", index)
-        st.fields = fields
-        self.struct_lookup[st.name.get_raw()] = st
+        self.struct_lookup[st.name.get_raw()] = st.struct_id
 
     def __handle_function(self, function: FunctionStatement) -> None:
         self.instructions = Instruction()
@@ -163,8 +162,8 @@ class ByteCodeGenerator:
         self.instructions.push_inst(OpCodeType.RETURN, 0)
 
     def __handle_struct_literal(self, literal: StructLiteral) -> None:
-        struct_info: StructStatement = self.struct_lookup[literal.name.token.get_raw()]
-        self.instructions.push_inst(OpCodeType.NEW_OBJ, struct_info.struct_id)
+        struct_id = self.struct_lookup[literal.name.token.get_raw()]
+        self.instructions.push_inst(OpCodeType.NEW_OBJ, struct_id)
         for name, expression in literal.init_expr.items():
             self.__handle_expression(expression)
             name_index = self.__add_constant(DataType.VARIABLE, name.token)

@@ -357,6 +357,30 @@ class Compiler:
             line=left.get_line()
         )
 
+    def __finish_struct_object(self, name: Identifier) -> StructLiteral:
+        expect_token(self.__next_required("Expected '{' for object creation"), TokenType.OPEN_BRACE)
+        expressions = dict()
+        if self.__match(TokenType.CLOSE_BRACE):
+            self.__next()
+        else:
+            while True:
+                token = self.__peek()
+                field_name = self.__scan_identifier(token, token.get_line())
+                self.__next()
+                expect_token(self.__next_required("Expected '='"), TokenType.ASSIGN)
+                expression = self.__scan_expression()
+                expressions[field_name] = expression
+                if self.__peek().get_type() == TokenType.COMMA:
+                    self.__next()
+                    continue
+                expect_token(self.__next(), TokenType.CLOSE_BRACE)
+                break
+        return StructLiteral(
+            name=name,
+            init_expressions=expressions,
+            line=name.get_line()
+        )
+
     def __scan_postfix(self) -> ExpressionStatement:
         expr = self.__scan_primary()
         while True:
@@ -366,6 +390,10 @@ class Compiler:
                 expr = self.__finish_index_expression(expr)
             elif self.__match(TokenType.DOT):
                 expr = self.__finish_member_expression(expr)
+            elif (isinstance(expr, Identifier) and
+                  expr.token.get_raw() in self.struct_names and
+                  self.__match(TokenType.OPEN_BRACE)):
+                return self.__finish_struct_object(expr)
             else:
                 break
         return expr
@@ -391,10 +419,7 @@ class Compiler:
         if token_type == TokenType.OPEN_SQUARE:
             return self.__scan_list(token)
         if token_type == TokenType.IDENTIFIER:
-            identifier = self.__scan_identifier(token, line)
-            if identifier.token.get_raw() in self.struct_names:
-                return self.__scan_struct_object(identifier)
-            return identifier
+            return self.__scan_identifier(token, line)
         print(f"[ LOG ] {token}")
         raise LanmoSyntaxError(token, "Invalid Syntax")
 
@@ -402,30 +427,6 @@ class Compiler:
         if token.get_raw() in BUILT_IN_METHODS:
             self.frame_names.add(token.get_raw())
         return Identifier(token, line)
-
-    def __scan_struct_object(self, name: Identifier) -> StructLiteral:
-        expect_token(self.__next_required("Expected '{' for object creation"), TokenType.OPEN_BRACE)
-        expressions = dict()
-        if self.__match(TokenType.CLOSE_BRACE):
-            self.__next()
-        else:
-            while True:
-                token = self.__peek()
-                field_name = self.__scan_identifier(token, token.get_line())
-                self.__next()
-                expect_token(self.__next_required("Expected '='"), TokenType.ASSIGN)
-                expression = self.__scan_expression()
-                expressions[field_name] = expression
-                if self.__peek().get_type() == TokenType.COMMA:
-                    self.__next()
-                    continue
-                expect_token(self.__next(), TokenType.CLOSE_BRACE)
-                break
-        return StructLiteral(
-            name=name,
-            init_expressions=expressions,
-            line=name.get_line()
-        )
 
     def __match(self, *types: TokenType) -> bool:
         return self.__peek().get_type() in types
