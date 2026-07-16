@@ -247,6 +247,8 @@ class ByteCodeGenerator:
     def __handle_identifier(self, identifier: Identifier) -> None:
         if self.__is_function(identifier.token):
             self.__push(DataType.FUNCTION, identifier.token)
+        elif identifier.token.get_raw() in BUILT_IN_METHODS:
+            self.__push(DataType.BUILT_IN_FUNCTION, identifier.token)
         else:
             slot_id = self.stack_trace.get_variable(identifier.token)
             self.instructions.push_inst(OpCodeType.LOAD, slot_id)
@@ -257,7 +259,7 @@ class ByteCodeGenerator:
 
     def __is_function(self, token: Word) -> bool:
         raw_token = token.get_raw()
-        return raw_token in self.program.frame_names or raw_token in BUILT_IN_METHODS
+        return raw_token in self.program.frame_names
 
     def __add_constant(self, data_type: DataType, value: Word | None) -> int:
         raw_data = None if value is None else value.get_raw()
@@ -269,7 +271,7 @@ class ByteCodeGenerator:
                  self.symbol_table += struct.pack("<BIi", data_type.value, 4, int(raw_data))
             case DataType.BOOLEAN:
                 self.symbol_table += struct.pack("<BB", DataType.BOOLEAN.value, value.get_type() == TokenType.K_TRUE)
-            case DataType.STRING | DataType.VARIABLE | DataType.FUNCTION:
+            case DataType.STRING | DataType.VARIABLE | DataType.FUNCTION | DataType.BUILT_IN_FUNCTION:
                 raw_data = raw_data[1:-1] if data_type == DataType.STRING else raw_data
                 length = len(raw_data)
                 self.symbol_table += struct.pack(f"<BI{length}s", data_type.value, length, raw_data.encode('utf-8'))

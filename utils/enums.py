@@ -91,12 +91,13 @@ class StatementType(Enum):
 
 
 class DataType(Enum):
-    INTEGER    = auto()
-    STRING     = auto()
-    VARIABLE   = auto()
-    FUNCTION   = auto()
-    NONE       = auto()
-    BOOLEAN    = auto()
+    INTEGER           = auto()
+    STRING            = auto()
+    VARIABLE          = auto()
+    FUNCTION          = auto()
+    NONE              = auto()
+    BOOLEAN           = auto()
+    BUILT_IN_FUNCTION = auto()
 
 
 class OpCodeType(Enum):

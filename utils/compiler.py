@@ -424,8 +424,6 @@ class Compiler:
         raise LanmoSyntaxError(token, "Invalid Syntax")
 
     def __scan_identifier(self, token: Word, line: int) -> Identifier:
-        if token.get_raw() in BUILT_IN_METHODS:
-            self.frame_names.add(token.get_raw())
         return Identifier(token, line)
 
     def __match(self, *types: TokenType) -> bool:
