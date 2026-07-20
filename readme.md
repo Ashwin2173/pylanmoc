@@ -1,4 +1,4 @@
-### Lanmo Script
+### Donut Script
 
 Usage:
 ```console
