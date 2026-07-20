@@ -1,8 +1,8 @@
 from utils.enums import StatementType
 
-FILE_EXTENSION = ".lm"
-COMPILE_EXTENSION = ".lmc"
-MAGIC = 2273
+FILE_EXTENSION = ".dnt"
+COMPILE_EXTENSION = ".dbc"
+MAGIC = b"DNUT"
 MAJOR_VERSION = 1
 MINOR_VERSION = 0
 
@@ -27,8 +27,10 @@ TOKEN_GRAMMAR = r"""
 | (?P<K_WHILE>\bwhile\b)                                  # while keyword 
 | (?P<K_ELSE>\belse\b)                                    # else keyword 
 | (?P<K_NULL>\bnull\b)                                    # null keyword 
+| (?P<K_STRUCT>\bstruct\b)                                # struct keyword 
 | (?P<EQUAL_EQUAL>==)                                     # equal
 | (?P<ASSIGN>=)                                           # assignment (after ==)
+| (?P<DOT>\.)                                              # dot 
 | (?P<COMMA>,)                                            # comma 
 | (?P<BANG>!=)                                            # not equal (bang)
 | (?P<LESSER_EQUALS><=)                                   # lesser or equal

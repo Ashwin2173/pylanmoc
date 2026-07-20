@@ -1,0 +1,30 @@
+struct Point { x, y }
+struct Couple { left, right }
+
+function main() {
+    var points = Couple {
+        left = Point {
+            x = 10,
+            y = 20
+        },
+        right = Point {
+            x = 10,
+            y = 20
+        }
+    };
+    var summed_point = sum_points(points);
+    print_point(summed_point);
+    return;
+}
+
+function sum_points(points) {
+    return Point {
+        x = points.left.x + points.right.x,
+        y = points.left.y + points.right.y
+    };
+}
+
+function print_point(point) {
+    print("point { x =", point.x, ", y=", point.y, "}");
+    return;
+}

@@ -6,10 +6,10 @@ from utils.constants import FILE_EXTENSION, MINOR_VERSION, MAJOR_VERSION, COMPIL
 
 def print_help() -> None:
     print("USAGE:")
-    print("    lanmo [PROGRAM_PATH] [OPTIONS]")
-    print(f"PROGRAM_PATH:    <lm_file>{FILE_EXTENSION}")
+    print("    donutc [PROGRAM_PATH] [OPTIONS]")
+    print(f"PROGRAM_PATH:    <dnt_file>{FILE_EXTENSION}")
     print("OPTIONS:")
-    print("    --version    version of the lmc")
+    print("    --version    version of the donutc")
     print("    --help       prints this usage")
 
 def open_program_file(file_path: str) -> str:
@@ -24,7 +24,7 @@ def main(args: list[str]) -> None:
     program_file = None
     program_path = None
     if "--version" in args:
-        print(f"LANMO Compiler v{MAJOR_VERSION}.{MINOR_VERSION}; Written in python")
+        print(f"DONUT Compiler v{MAJOR_VERSION}.{MINOR_VERSION}; Written in python")
         sys.exit(0)
     elif "--help" in args:
         print_help()
@@ -36,7 +36,7 @@ def main(args: list[str]) -> None:
                 program_path = item
                 break
     if program_file is None:
-        print("ERROR: No *.lm file provided")
+        print("ERROR: No *.dnt file provided")
         print_help()
         sys.exit(1)
     compiler = Compiler(program_file)

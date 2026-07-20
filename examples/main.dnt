@@ -1,0 +1,10 @@
+struct Couple { left, right }
+
+function main() {
+    var couple = Couple {
+        left = 10,
+        right = 10
+    };
+    print(couple);
+    return;
+}

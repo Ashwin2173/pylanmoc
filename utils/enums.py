@@ -12,6 +12,7 @@ class TokenType(Enum):
     CLOSE_SQUARE = "CLOSE_SQUARE"
     COMMA = "COMMA"
     SEMI_COLON = "SEMI_COLON"
+    DOT = "DOT"
 
     IDENTIFIER = "IDENTIFIER"
     FLOAT = "FLOAT"
@@ -30,6 +31,7 @@ class TokenType(Enum):
     K_WHILE = "while"
     K_ELSE = "else"
     K_NULL = "null"
+    K_STRUCT = "struct"
 
     PLUS = "PLUS"
     MINUS = "MINUS"
@@ -48,6 +50,7 @@ class TokenType(Enum):
 
 class StatementType(Enum):
     FUNCTION_DEFINITION = auto()
+    STRUCT_DEFINITION = auto()
     BLOCK_STATEMENT = auto()
     RETURN_STATEMENT = auto()
     EXPRESSION_STATEMENT = auto()
@@ -57,6 +60,7 @@ class StatementType(Enum):
     STRING = auto()
     BOOLEAN = auto()
     NULL = auto()
+    STRUCT = auto()
 
     UNARY_MINUS = auto()
     UNARY_BANG = auto()
@@ -78,6 +82,7 @@ class StatementType(Enum):
     CALL_EXPRESSION = auto()
     INDEX_EXPRESSION = auto()
     SEQUENCE_EXPRESSION = auto()
+    MEMBER_EXPRESSION = auto()
 
     VARIABLE_DECLARATION = auto()
     ASSIGNMENT_STATEMENT = auto()
@@ -86,12 +91,13 @@ class StatementType(Enum):
 
 
 class DataType(Enum):
-    INTEGER    = auto()
-    STRING     = auto()
-    VARIABLE   = auto()
-    FUNCTION   = auto()
-    NONE       = auto()
-    BOOLEAN    = auto()
+    INTEGER           = auto()
+    STRING            = auto()
+    VARIABLE          = auto()
+    FUNCTION          = auto()
+    NONE              = auto()
+    BOOLEAN           = auto()
+    BUILT_IN_FUNCTION = auto()
 
 
 class OpCodeType(Enum):
@@ -111,3 +117,6 @@ class OpCodeType(Enum):
     GET_INDEX     = auto()
     SET_INDEX     = auto()
     UNARY_OP      = auto()
+    NEW_OBJ       = auto()
+    GET_FIELD     = auto()
+    SET_FIELD     = auto()

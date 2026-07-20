@@ -17,6 +17,7 @@ from utils.models import (
     Identifier,
     NullLiteral,
     IfStatement,
+    StructLiteral,
     StringLiteral,
     BooleanLiteral,
     IntegerLiteral,
@@ -25,11 +26,14 @@ from utils.models import (
     BlockStatement,
     ReturnStatement,
     IndexExpression,
+    UnaryExpression,
+    StructStatement,
     BinaryExpression,
+    MemberExpression,
     FunctionStatement,
+    SequenceExpression,
     ExpressionStatement,
     VariableDeclaration,
-    SequenceExpression, UnaryExpression
 )
 from utils.enums import (
     DataType,
@@ -37,17 +41,18 @@ from utils.enums import (
     OpCodeType,
     StatementType
 )
-from utils.exceptions import LanmoSyntaxError
+from utils.exceptions import DonutSyntaxError
 
 class ByteCodeGenerator:
     def __init__(self, program: Program) -> None:
         self.program = program
 
         self.raw_symbols = dict()
+        self.struct_lookup = dict()
         self.global_scope = self.program.frame_names.union(BUILT_IN_METHODS)
-        self.function_count = 0
 
         self.symbol_table = bytearray()
+        self.struct_table = bytearray()
         self.program_code = bytearray()
 
         self.instructions: Instruction | None = None
@@ -56,39 +61,55 @@ class ByteCodeGenerator:
     def pack_byte_code(self) -> bytearray:
         self.__handle_global_statements()
         if len(self.raw_symbols) >= 65534:
-            raise LanmoSyntaxError(None, "The file contains too many symbols")
+            raise DonutSyntaxError(None, "The file contains too many symbols")
         bc = bytearray()
-        bc += struct.pack("<IHH", MAGIC, MAJOR_VERSION, MINOR_VERSION)
+        bc += struct.pack("<4sHH", MAGIC, MAJOR_VERSION, MINOR_VERSION)
         bc += struct.pack("<H", len(self.raw_symbols))
         bc += self.symbol_table
-        bc += struct.pack("<H", self.function_count)
+        bc += struct.pack("<H", len(self.program.structs))
+        bc += self.struct_table
+        bc += struct.pack("<H", len(self.program.functions))
         bc += self.program_code
         return bc
 
     def __handle_global_statements(self) -> None:
-        for item in self.program.get_body():
-            if item.get_type() == StatementType.FUNCTION_DEFINITION:
-                self.__handle_function(cast(FunctionStatement, item))
-            else:
-                raise NotImplementedError(item.get_type())
+        for st in self.program.structs:
+            self.__handle_struct(st)
+        for function in self.program.functions:
+            self.__handle_function(function)
+
+    def __handle_struct(self, st: StructStatement) -> None:
+        self.struct_table += struct.pack("<B", len(st.fields))
+        for index, field in enumerate(st.fields):
+            index = self.__add_constant(DataType.VARIABLE, field.token)
+            self.struct_table += struct.pack("<H", index)
+        self.struct_lookup[st.name.get_raw()] = st.struct_id
 
     def __handle_function(self, function: FunctionStatement) -> None:
-        self.function_count += 1
         self.instructions = Instruction()
         self.stack_trace = StackTrace()
 
         index = self.__add_constant(DataType.FUNCTION, function.name)
-        self.__handle_block(StatementType.FUNCTION_DEFINITION, function.body)
+        self.__handle_block(StatementType.FUNCTION_DEFINITION, function.body, function.arguments)
         frame = bytearray()
         frame += struct.pack("<H", index)
+        frame += struct.pack("<B", len(function.arguments))
         frame += struct.pack("<I", self.stack_trace.slot_size)
         frame += struct.pack("<H", 255)
         frame += struct.pack("<I", self.instructions.get_count())
         frame += self.instructions.get_raw()
         self.program_code += frame
 
-    def __handle_block(self, stmt_type: StatementType, block: BlockStatement) -> None:
+    def __handle_function_arguments(self, arguments: list[Identifier]) -> None:
+        for argument in arguments[::-1]:
+            slot_id = self.stack_trace.create_variable(argument.token)
+            self.instructions.push_inst(OpCodeType.STORE, slot_id)
+            self.instructions.push_inst(OpCodeType.POP)
+
+    def __handle_block(self, stmt_type: StatementType, block: BlockStatement, arguments: list[Identifier]=None) -> None:
         self.stack_trace.push(stmt_type, block.get_line())
+        if arguments is not None:
+            self.__handle_function_arguments(arguments)
         for statement in block.body:
             self.__handle_statement(statement)
         self.stack_trace.pop()
@@ -130,7 +151,7 @@ class ByteCodeGenerator:
     def __handle_variable_declaration(self, declaration: VariableDeclaration) -> None:
         name = declaration.name
         if self.__is_function(name):
-            raise LanmoSyntaxError(name, f"Identifier '{ name.get_raw() }' is already defined as a function")
+            raise DonutSyntaxError(name, f"Identifier '{ name.get_raw() }' is already defined as a function")
         self.__handle_expression(declaration.initializer)
         slot_id = self.stack_trace.create_variable(declaration.name)
         self.instructions.push_inst(OpCodeType.STORE, slot_id)
@@ -139,6 +160,14 @@ class ByteCodeGenerator:
     def __handle_return(self, return_stmt: ReturnStatement) -> None:
         self.__handle_expression(return_stmt.expression)
         self.instructions.push_inst(OpCodeType.RETURN, 0)
+
+    def __handle_struct_literal(self, literal: StructLiteral) -> None:
+        struct_id = self.struct_lookup[literal.name.token.get_raw()]
+        self.instructions.push_inst(OpCodeType.NEW_OBJ, struct_id)
+        for name, expression in literal.init_expr.items():
+            self.__handle_expression(expression)
+            name_index = self.__add_constant(DataType.VARIABLE, name.token)
+            self.instructions.push_inst(OpCodeType.SET_FIELD, name_index)
 
     def __handle_expression(self, expr: ExpressionStatement) -> None:
         if expr.get_type() in BIN_OP_LOOKUP:
@@ -155,6 +184,8 @@ class ByteCodeGenerator:
             self.__handle_call_statement(cast(CallExpression, expr))
         elif expr.get_type() == StatementType.INDEX_EXPRESSION:
             self.__handle_index_statement(cast(IndexExpression, expr))
+        elif expr.get_type() == StatementType.MEMBER_EXPRESSION:
+            self.__handle_member_statement(cast(MemberExpression, expr))
         elif expr.get_type() == StatementType.IDENTIFIER:
             self.__handle_identifier(cast(Identifier, expr))
         elif expr.get_type() == StatementType.SEQUENCE_EXPRESSION:
@@ -167,6 +198,8 @@ class ByteCodeGenerator:
             self.__push(DataType.STRING, cast(StringLiteral, expr).token)
         elif expr.get_type() == StatementType.NULL:
             self.__push(DataType.NONE, cast(NullLiteral, expr).token)
+        elif expr.get_type() == StatementType.STRUCT:
+            self.__handle_struct_literal(cast(StructLiteral, expr))
         else:
             raise NotImplementedError(expr.get_type())
 
@@ -181,6 +214,12 @@ class ByteCodeGenerator:
             self.__handle_expression(expression.right)
             self.__handle_expression(index_expr.index)
             self.instructions.push_inst(OpCodeType.SET_INDEX)
+        elif expression.left.get_type() == StatementType.MEMBER_EXPRESSION:
+            member_expr = cast(MemberExpression, expression.left)
+            self.__handle_expression(member_expr.parent)
+            self.__handle_expression(expression.right)
+            name_index = self.__add_constant(DataType.VARIABLE, member_expr.child)
+            self.instructions.push_inst(OpCodeType.SET_FIELD, name_index)
         else:
             raise NotImplementedError(expression.left.get_type())
 
@@ -189,6 +228,11 @@ class ByteCodeGenerator:
         for argument in call_expr.arguments:
             self.__handle_expression(argument)
         self.instructions.push_inst(OpCodeType.CALL, len(call_expr.arguments))
+
+    def __handle_member_statement(self, expr: MemberExpression) -> None:
+        self.__handle_expression(expr.parent)
+        child_index = self.__add_constant(DataType.VARIABLE, expr.child)
+        self.instructions.push_inst(OpCodeType.GET_FIELD, child_index)
 
     def __handle_index_statement(self, index_expr: IndexExpression) -> None:
         self.__handle_expression(index_expr.expression)
@@ -203,6 +247,8 @@ class ByteCodeGenerator:
     def __handle_identifier(self, identifier: Identifier) -> None:
         if self.__is_function(identifier.token):
             self.__push(DataType.FUNCTION, identifier.token)
+        elif identifier.token.get_raw() in BUILT_IN_METHODS:
+            self.__push(DataType.BUILT_IN_FUNCTION, identifier.token)
         else:
             slot_id = self.stack_trace.get_variable(identifier.token)
             self.instructions.push_inst(OpCodeType.LOAD, slot_id)
@@ -213,7 +259,7 @@ class ByteCodeGenerator:
 
     def __is_function(self, token: Word) -> bool:
         raw_token = token.get_raw()
-        return raw_token in self.program.frame_names or raw_token in BUILT_IN_METHODS
+        return raw_token in self.program.frame_names
 
     def __add_constant(self, data_type: DataType, value: Word | None) -> int:
         raw_data = None if value is None else value.get_raw()
@@ -225,7 +271,7 @@ class ByteCodeGenerator:
                  self.symbol_table += struct.pack("<BIi", data_type.value, 4, int(raw_data))
             case DataType.BOOLEAN:
                 self.symbol_table += struct.pack("<BB", DataType.BOOLEAN.value, value.get_type() == TokenType.K_TRUE)
-            case DataType.STRING | DataType.VARIABLE | DataType.FUNCTION:
+            case DataType.STRING | DataType.VARIABLE | DataType.FUNCTION | DataType.BUILT_IN_FUNCTION:
                 raw_data = raw_data[1:-1] if data_type == DataType.STRING else raw_data
                 length = len(raw_data)
                 self.symbol_table += struct.pack(f"<BI{length}s", data_type.value, length, raw_data.encode('utf-8'))
@@ -255,7 +301,7 @@ class Instruction:
 
     def update_inst(self, index: int, value: int=0) -> None:
         if index < 0 or index > len(self.instructions) - 1:
-            raise LanmoSyntaxError(None, "Compiler faulted (error point: update_inst)")
+            raise DonutSyntaxError(None, "Compiler faulted (error point: update_inst)")
         og_inst = self.instructions[index]
         self.instructions[index] = (og_inst[0], value)
 
@@ -274,7 +320,7 @@ class StackTrace:
 
     def create_variable(self, token: Word) -> int:
         if token.get_raw() in self.stack[-1].variables:
-            raise LanmoSyntaxError(token, f"Variable '{token.get_raw()}' is already declared in the scope")
+            raise DonutSyntaxError(token, f"Variable '{token.get_raw()}' is already declared in the scope")
         if len(self.available_slots) != 0:
             slot_id = self.available_slots.pop()
         else:
@@ -289,4 +335,4 @@ class StackTrace:
             stack_variables = self.stack[-stack_index].variables
             if name in stack_variables:
                 return stack_variables[name]
-        raise LanmoSyntaxError(token, f"Variable '{token.get_raw()}' referred before declaration")
+        raise DonutSyntaxError(token, f"Variable '{token.get_raw()}' referred before declaration")
