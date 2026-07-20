@@ -2,7 +2,7 @@ from utils.enums import StatementType
 
 FILE_EXTENSION = ".lm"
 COMPILE_EXTENSION = ".lmc"
-MAGIC = b"DNUT"
+MAGIC = 2273
 MAJOR_VERSION = 1
 MINOR_VERSION = 0
 

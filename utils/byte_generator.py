@@ -63,7 +63,7 @@ class ByteCodeGenerator:
         if len(self.raw_symbols) >= 65534:
             raise LanmoSyntaxError(None, "The file contains too many symbols")
         bc = bytearray()
-        bc += struct.pack("<4sHH", MAGIC, MAJOR_VERSION, MINOR_VERSION)
+        bc += struct.pack("<IHH", MAGIC, MAJOR_VERSION, MINOR_VERSION)
         bc += struct.pack("<H", len(self.raw_symbols))
         bc += self.symbol_table
         bc += struct.pack("<H", len(self.program.structs))
