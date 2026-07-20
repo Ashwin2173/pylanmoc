@@ -59,7 +59,7 @@ class Compiler:
                 self.__next()
                 structs.append(self.__scan_struct_definition())
             else:
-                raise DonutSyntaxError(token, "Invalid Syntax")
+                raise LanmoSyntaxError(token, "Invalid Syntax")
         return Program(functions=functions, structs=structs, frame_names=self.frame_names)
 
     def __scan_struct_definition(self) -> StructStatement:
@@ -459,7 +459,7 @@ class Compiler:
     def __next_required(self, message: str) -> Word:
         if self.__pos >= len(self.__tokens):
             token = None if len(self.__tokens) > 0 else self.__tokens[-1]
-            raise DonutSyntaxError(token, message)
+            raise LanmoSyntaxError(token, message)
         return self.__next()
 
 def expect_token(token: Word, token_type: TokenType) -> None:

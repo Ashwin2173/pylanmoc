@@ -4,9 +4,9 @@ import sys
 print("Starting to build...")
 
 if os.name == 'nt':
-    is_success = os.system("pyinstaller --onefile donutc.py")
+    is_success = os.system("pyinstaller --onefile lmc.py")
     if is_success == 0:
-        os.system(r'xcopy "dist\donutc.exe" "C:\Program Files (x86)\Lasm\bin\" /I /Y')
+        os.system(r'xcopy "dist\lmc.exe" "C:\Program Files (x86)\Lasm\bin\" /I /Y')
         print("[ INFO ] Build successfully...")
 else:
     print("Build in only supported for windows for now")
