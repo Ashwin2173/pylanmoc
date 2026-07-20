@@ -41,7 +41,7 @@ from utils.enums import (
     OpCodeType,
     StatementType
 )
-from utils.exceptions import DonutSyntaxError
+from utils.exceptions import LanmoSyntaxError
 
 class ByteCodeGenerator:
     def __init__(self, program: Program) -> None:
@@ -61,9 +61,9 @@ class ByteCodeGenerator:
     def pack_byte_code(self) -> bytearray:
         self.__handle_global_statements()
         if len(self.raw_symbols) >= 65534:
-            raise DonutSyntaxError(None, "The file contains too many symbols")
+            raise LanmoSyntaxError(None, "The file contains too many symbols")
         bc = bytearray()
-        bc += struct.pack("<4sHH", MAGIC, MAJOR_VERSION, MINOR_VERSION)
+        bc += struct.pack("<IHH", MAGIC, MAJOR_VERSION, MINOR_VERSION)
         bc += struct.pack("<H", len(self.raw_symbols))
         bc += self.symbol_table
         bc += struct.pack("<H", len(self.program.structs))
@@ -151,7 +151,7 @@ class ByteCodeGenerator:
     def __handle_variable_declaration(self, declaration: VariableDeclaration) -> None:
         name = declaration.name
         if self.__is_function(name):
-            raise DonutSyntaxError(name, f"Identifier '{ name.get_raw() }' is already defined as a function")
+            raise LanmoSyntaxError(name, f"Identifier '{ name.get_raw() }' is already defined as a function")
         self.__handle_expression(declaration.initializer)
         slot_id = self.stack_trace.create_variable(declaration.name)
         self.instructions.push_inst(OpCodeType.STORE, slot_id)
@@ -301,7 +301,7 @@ class Instruction:
 
     def update_inst(self, index: int, value: int=0) -> None:
         if index < 0 or index > len(self.instructions) - 1:
-            raise DonutSyntaxError(None, "Compiler faulted (error point: update_inst)")
+            raise LanmoSyntaxError(None, "Compiler faulted (error point: update_inst)")
         og_inst = self.instructions[index]
         self.instructions[index] = (og_inst[0], value)
 
@@ -320,7 +320,7 @@ class StackTrace:
 
     def create_variable(self, token: Word) -> int:
         if token.get_raw() in self.stack[-1].variables:
-            raise DonutSyntaxError(token, f"Variable '{token.get_raw()}' is already declared in the scope")
+            raise LanmoSyntaxError(token, f"Variable '{token.get_raw()}' is already declared in the scope")
         if len(self.available_slots) != 0:
             slot_id = self.available_slots.pop()
         else:
@@ -335,4 +335,4 @@ class StackTrace:
             stack_variables = self.stack[-stack_index].variables
             if name in stack_variables:
                 return stack_variables[name]
-        raise DonutSyntaxError(token, f"Variable '{token.get_raw()}' referred before declaration")
+        raise LanmoSyntaxError(token, f"Variable '{token.get_raw()}' referred before declaration")

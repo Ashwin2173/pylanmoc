@@ -30,7 +30,7 @@ from utils.models import (
 from utils.byte_generator import ByteCodeGenerator
 from utils.constants import TOKEN_GRAMMAR, BUILT_IN_METHODS
 from utils.enums import StatementType, TokenType
-from utils.exceptions import DonutSyntaxError
+from utils.exceptions import LanmoSyntaxError
 
 class Compiler:
     def __init__(self, source: str) -> None:
@@ -59,7 +59,7 @@ class Compiler:
                 self.__next()
                 structs.append(self.__scan_struct_definition())
             else:
-                raise DonutSyntaxError(token, "Invalid Syntax")
+                raise LanmoSyntaxError(token, "Invalid Syntax")
         return Program(functions=functions, structs=structs, frame_names=self.frame_names)
 
     def __scan_struct_definition(self) -> StructStatement:
@@ -237,7 +237,7 @@ class Compiler:
             token = self.__next()
             right = self.__scan_assignment()
             if not is_assignable(left):
-                raise DonutSyntaxError(token, "Illegal assignment expression")
+                raise LanmoSyntaxError(token, "Illegal assignment expression")
             left = BinaryExpression(left, right, StatementType.BINARY_ASSIGN, token.get_line())
         return left
 
@@ -421,7 +421,7 @@ class Compiler:
         if token_type == TokenType.IDENTIFIER:
             return self.__scan_identifier(token, line)
         print(f"[ LOG ] {token}")
-        raise DonutSyntaxError(token, "Invalid Syntax")
+        raise LanmoSyntaxError(token, "Invalid Syntax")
 
     def __scan_identifier(self, token: Word, line: int) -> Identifier:
         return Identifier(token, line)
@@ -431,7 +431,7 @@ class Compiler:
 
     def __peek(self, offset: int=0) -> Word:
         if self.__pos >= len(self.__tokens) + offset:
-            raise DonutSyntaxError(None, "Invalid source file")
+            raise LanmoSyntaxError(None, "Invalid source file")
         return self.__tokens[self.__pos + offset]
 
     def __next(self) -> Word:
@@ -459,12 +459,12 @@ class Compiler:
     def __next_required(self, message: str) -> Word:
         if self.__pos >= len(self.__tokens):
             token = None if len(self.__tokens) > 0 else self.__tokens[-1]
-            raise DonutSyntaxError(token, message)
+            raise LanmoSyntaxError(token, message)
         return self.__next()
 
 def expect_token(token: Word, token_type: TokenType) -> None:
     if token.get_type() != token_type:
-        raise DonutSyntaxError(token, f"Expected {token_type.name}, but got {token.get_type().value}")
+        raise LanmoSyntaxError(token, f"Expected {token_type.name}, but got {token.get_type().value}")
 
 def is_assignable(expr: ExpressionStatement) -> bool:
     return expr.get_type() in { StatementType.IDENTIFIER , StatementType.INDEX_EXPRESSION, StatementType.MEMBER_EXPRESSION }
