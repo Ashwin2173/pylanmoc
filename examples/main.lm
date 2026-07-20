@@ -1,5 +1,0 @@
-function main() {
-    var x = [1, 2];
-    print("Hello");
-    return;
-}

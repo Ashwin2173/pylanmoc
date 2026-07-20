@@ -1,8 +1,8 @@
 from utils.enums import StatementType
 
-FILE_EXTENSION = ".lm"
-COMPILE_EXTENSION = ".lmc"
-MAGIC = 2273
+FILE_EXTENSION = ".dnt"
+COMPILE_EXTENSION = ".dbc"
+MAGIC = b"DNUT"
 MAJOR_VERSION = 1
 MINOR_VERSION = 0
 
