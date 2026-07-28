@@ -320,7 +320,7 @@ class StackTrace:
 
     def create_variable(self, token: Word) -> int:
         if token.get_raw() in self.stack[-1].variables:
-            raise LanmoSyntaxError(token, f"Variable '{token.get_raw()}' is already declared in the scope")
+            raise LanmoSyntaxError(token, f"Variable '{token.get_raw()}' is already declared in the frame")
         if len(self.available_slots) != 0:
             slot_id = self.available_slots.pop()
         else:

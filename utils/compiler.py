@@ -27,13 +27,14 @@ from utils.models import (
     ExpressionStatement,
     VariableDeclaration,
 )
-from utils.byte_generator import ByteCodeGenerator
-from utils.constants import TOKEN_GRAMMAR, BUILT_IN_METHODS
-from utils.enums import StatementType, TokenType
+from utils.constants import TOKEN_GRAMMAR
 from utils.exceptions import LanmoSyntaxError
+from utils.enums import StatementType, TokenType
+from utils.byte_generator import ByteCodeGenerator
 
 class Compiler:
-    def __init__(self, source: str) -> None:
+    def __init__(self, path: str, source: str) -> None:
+        self.source_path = path
         self.source = source
         self.__tokens: list[Word] = self.__tokenize()
         self.struct_names = set()
@@ -168,9 +169,8 @@ class Compiler:
         next_token = self.__next_required("Expected expression after 'while'")
         expect_token(next_token, TokenType.OPEN_PARAM)
         test_expression = self.__scan_expression()
-        expect_token(self.__peek(), TokenType.CLOSE_PARAM)
-        self.__next()
-        body = self.__scan_local_statement(self.__next())
+        expect_token(self.__next(), TokenType.CLOSE_PARAM)
+        body = self.__scan_local_statement(self.__peek())
         return WhileStatement(
             test=test_expression,
             body=body,
@@ -182,13 +182,12 @@ class Compiler:
         next_token = self.__next_required("Expected expression after 'if'")
         expect_token(next_token, TokenType.OPEN_PARAM)
         test_expression = self.__scan_expression()
-        expect_token(self.__peek(), TokenType.CLOSE_PARAM)
-        self.__next()
-        consequent = self.__scan_local_statement(self.__next())
+        expect_token(self.__next(), TokenType.CLOSE_PARAM)
+        consequent = self.__scan_local_statement(self.__peek())
         alternate = None
         if self.__peek().get_type() == TokenType.K_ELSE:
             self.__next_required("Expected statement after 'else'")
-            alternate = self.__scan_local_statement(self.__next())
+            alternate = self.__scan_local_statement(self.__peek())
         return IfStatement(
             test=test_expression,
             consequent=consequent,
@@ -420,7 +419,6 @@ class Compiler:
             return self.__scan_list(token)
         if token_type == TokenType.IDENTIFIER:
             return self.__scan_identifier(token, line)
-        print(f"[ LOG ] {token}")
         raise LanmoSyntaxError(token, "Invalid Syntax")
 
     def __scan_identifier(self, token: Word, line: int) -> Identifier:
@@ -464,7 +462,8 @@ class Compiler:
 
 def expect_token(token: Word, token_type: TokenType) -> None:
     if token.get_type() != token_type:
-        raise LanmoSyntaxError(token, f"Expected {token_type.name}, but got {token.get_type().value}")
+        token_type = token_type.name.replace("_", " ").lower()
+        raise LanmoSyntaxError(token, f"Expected {token_type}, but got {token.get_type().value}")
 
 def is_assignable(expr: ExpressionStatement) -> bool:
     return expr.get_type() in { StatementType.IDENTIFIER , StatementType.INDEX_EXPRESSION, StatementType.MEMBER_EXPRESSION }
