@@ -139,7 +139,7 @@ class Compiler:
         if token.get_type() == TokenType.K_WHILE:
             return self.__scan_while_statement(token)
         if token.get_type() == TokenType.OPEN_BRACE:
-            self.__pos -= 1
+            # self.__pos -= 1
             return self.__scan_block_statement()
         return self.__scan_expression_statement()
 

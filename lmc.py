@@ -66,7 +66,7 @@ def main(args: list[str]) -> None:
             file.write(byte_code)
     except LanmoSyntaxError as l:
         print_failure(l, compiler)
-        exit(1)
+        sys.exit(1)
     except Exception as e:
         print("Error: compiler core broke")
         exit(1)
