@@ -74,7 +74,9 @@ UNA_OP_LOOKUP = {
 BUILT_IN_METHODS = {
     "print",
     "input",
+    "append",
     "len",
     "int",
-    "now"
+    "now",
+    "str",
 }
